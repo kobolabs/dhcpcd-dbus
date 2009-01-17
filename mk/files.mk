@@ -1,0 +1,12 @@
+# Quick and dirty files
+# Copyright 2008 Roy Marples <roy@marples.name>
+
+CONFDIR?=	${SYSCONFDIR}
+FILESDIR?=	${BINDIR}
+FILESMODE?=	${NONBINMODE}
+
+_filesinstall: ${CONFFILES} ${FILES} 
+	${INSTALL} -d ${DESTDIR}${CONFDIR}
+	${INSTALL} -m ${FILESMODE} ${CONFFILES} ${DESTDIR}${CONFDIR}
+	${INSTALL} -d ${DESTDIR}${FILESDIR}
+	${INSTALL} -m ${FILESMODE} ${FILES} ${DESTDIR}${FILESDIR}

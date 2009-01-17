@@ -1,0 +1,4 @@
+[D-BUS Service]
+Name=name.marples.roy.dhcpcd
+Exec=@BINDIR@/dhcpcd-dbus
+User=root
