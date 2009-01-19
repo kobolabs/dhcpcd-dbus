@@ -1,0 +1,21 @@
+dhcpcd-dbus
+Copyright 2009 Roy Marples <roy@marples.name>
+
+
+Installation
+------------
+dbus-1.2.0 or newer is required to build
+Then just make; make install
+
+
+Notes
+-----
+DBus does not automatically start dhcpcd-dbus.
+This is a dhcpcd-dbus bug somewhere.
+
+
+ChangeLog
+---------
+We do not supply a ChangeLog.
+However, you're more than welcome to read the commit log at
+http://roy.marples.name/projects/dhcpcd-dbus/log/
