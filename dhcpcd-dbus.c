@@ -76,6 +76,9 @@ static const char *introspection_xml =
 	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
 	"      <arg name=\"interfaces\" direction=\"out\" type=\"av\"/>\n"
 	"    </method>\n"
+	"    <method name=\"GetStatus\">\n"
+	"      <arg name=\"Status\" direction=\"out\" type=\"s\"/>\n"
+	"    </method>\n"
 	"    <method name=\"Rebind\">\n"
 	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
 	"    </method>\n"
@@ -87,6 +90,9 @@ static const char *introspection_xml =
 	"    </method>\n"
 	"    <signal name=\"Event\">\n"
 	"      <arg name=\"configuration\" type=\"a\">\n"
+	"    </signal>\n"
+	"    <signal name=\"StatusChanged\">\n"
+	"      <arg name=\"status\" type=\"s\">\n"
 	"    </signal>\n"
 	"  </interface>\n"
 	"</node>\n";
@@ -412,6 +418,42 @@ return_dbus_error(DBusConnection *con, DBusMessage *msg,
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
+static DBusHandlerResult
+return_status(DBusConnection *con, DBusMessage *msg)
+{
+	DBusMessage *reply;
+
+	reply = dbus_message_new_method_return(msg);
+	dbus_message_append_args(reply,
+				 DBUS_TYPE_STRING,
+				 &dhcpcd_status,
+				 DBUS_TYPE_INVALID);
+	dbus_connection_send(con, reply, NULL);
+	dbus_message_unref(reply);
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
+void
+signal_dhcpcd_status(const char *status)
+{
+	DBusMessage *msg;
+	DBusMessageIter args;
+
+	syslog(LOG_INFO, "status changed to %s", status);
+	msg = dbus_message_new_signal(DHCPCD_PATH, DHCPCD_SERVICE, "StatusChanged");
+	if (msg == NULL) {
+		syslog(LOG_ERR, "failed to make a status changed message");
+		return;
+	}
+	dbus_message_iter_init_append(msg, &args);
+	dbus_message_iter_append_basic(&args,
+				       DBUS_TYPE_STRING,
+				       &status);
+	if (!dbus_connection_send(connection, msg, NULL))
+		syslog(LOG_ERR, "failed to send status to dbus");
+	dbus_message_unref(msg);
+}
+
 void
 configure_dbus(const struct config *c)
 {
@@ -567,6 +609,10 @@ msg_handler(DBusConnection *con, DBusMessage *msg, _unused void *data)
 					     DHCPCD_SERVICE,
 					     "GetInterfaces"))
 		return dhcpcd_get_interfaces(con, msg);
+	else if (dbus_message_is_method_call(msg,
+					     DHCPCD_SERVICE,
+					     "GetStatus"))
+		return return_status(con, msg);
 	else if (dbus_message_is_method_call(msg,
 					     DHCPCD_SERVICE,
 					     "Rebind"))

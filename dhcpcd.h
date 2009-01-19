@@ -31,6 +31,7 @@
 #include <poll.h>
 
 extern char *dhcpcd_version;
+extern const char *dhcpcd_status;
 
 struct config {
 	const char *iface;

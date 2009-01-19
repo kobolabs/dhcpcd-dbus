@@ -36,5 +36,6 @@ int close_dbus(void);
 size_t add_dbus_listeners(struct pollfd *);
 void check_dbus_listeners(struct pollfd *, size_t);
 void configure_dbus(const struct config *);
+void signal_dhcpcd_status(const char *);
 
 #endif

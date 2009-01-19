@@ -47,10 +47,22 @@
 #endif
 
 char *dhcpcd_version = NULL;
+const char *dhcpcd_status = NULL;
 struct config *configs = NULL;
 
 static int command_fd = -1;
 static int listen_fd = -1;
+
+const char *const up_reasons[] = {
+	"BOUND",
+	"RENEW",
+	"REBIND",
+	"REBOOT",
+	"IPV4LL",
+	"INFORM",
+	"TIMEOUT",
+	NULL
+};
 
 static ssize_t
 _dhcpcd_command(int fd, const char *cmd, char **buffer) 
@@ -146,6 +158,34 @@ get_dhcp_config(const struct config *c, const char *var)
 	return _get_dhcp_config(c->data, c->data_len, var);
 }
 
+static const char *
+get_status(void)
+{
+	const char *nstatus, *reason;
+	const struct config *c;
+	const char *const *r;
+
+	nstatus = NULL;
+	for (c = configs; c; c = c->next) {
+		reason = get_dhcp_config(c, "reason=");
+		if (reason == NULL)
+			continue;
+		for (r = up_reasons; *r; r++) {
+			if (strcmp(*r, reason) == 0) {
+				nstatus = "connected";
+				break;
+			}
+		}
+		if (nstatus && strcmp(nstatus, "connected") == 0)
+			break;
+		if (strcmp(reason, "CARRIER") == 0)
+			nstatus = "connecting";
+	}
+	if (nstatus == NULL)
+		nstatus = "disconnected";
+	return nstatus;
+}
+
 struct config *
 find_config(const char *iface)
 {
@@ -229,6 +269,7 @@ check_dhcpcd_listeners(struct pollfd *fds, size_t nfds)
 {
 	size_t i;
 	struct config *c;
+	const char *nstatus;
 
 	for (i = 0; i < nfds; i++) {
 		if (fds[i].fd != listen_fd)
@@ -240,6 +281,11 @@ check_dhcpcd_listeners(struct pollfd *fds, size_t nfds)
 				break;
 			}
 			configure_dbus(c);
+			nstatus = get_status();
+			if (strcmp(nstatus, dhcpcd_status)) {
+				dhcpcd_status = nstatus;
+				signal_dhcpcd_status(nstatus);
+			}
 		}
 	}
 }
@@ -251,6 +297,7 @@ dhcpcd_init(void)
 	ssize_t nifs, bytes;
 	struct config *c;
 	static int last_errno;
+	const char *nstatus;
 
 	if (command_fd != -1)
 		return 0;
@@ -292,6 +339,13 @@ dhcpcd_init(void)
 		syslog(LOG_INFO, "retrieved interface %s (%s)",
 		       c->iface, get_dhcp_config(c, "reason="));
 	}
+
+	nstatus = get_status();
+	if (dhcpcd_status == NULL || strcmp(nstatus, dhcpcd_status)) {
+		dhcpcd_status = nstatus;
+		signal_dhcpcd_status(nstatus);
+	}
+
 	return 0;
 }
 
