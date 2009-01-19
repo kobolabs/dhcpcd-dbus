@@ -6,8 +6,8 @@ PROG=		dhcpcd-dbus
 SRCS=		dhcpcd.c dhcpcd-dbus.c main.c
 
 CONFFILES=	dhcpcd-dbus.conf
-FILES=		dhcpcd-dbus.service
-CLEANFILES+=	dhcpcd-dbus.service
+FILES=		name.marples.roy.dhcpcd.service
+CLEANFILES+=	name.marples.roy.dhcpcd.service
 
 PREFIX?=	/usr/local
 BINDIR?=	${PREFIX}/libexec
