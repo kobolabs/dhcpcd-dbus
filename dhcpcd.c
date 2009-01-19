@@ -201,7 +201,7 @@ static struct config *
 add_config(char *data, size_t len)
 {
 	const char *iface;
-	struct config *c;
+	struct config *c, *cn;
 
 	iface = _get_dhcp_config(data, len, "interface=");
 	if (iface == NULL) {
@@ -215,8 +215,14 @@ add_config(char *data, size_t len)
 			syslog(LOG_ERR, "malloc: %m");
 			return NULL;
 		}
-		c->next = configs;
-		configs = c;
+		if (configs) {
+			cn = configs;
+			while (cn->next)
+				cn = cn->next;
+			cn->next = c;
+		} else
+			configs  =c;
+		c->next = NULL;
 	} else
 		free(c->data);
 

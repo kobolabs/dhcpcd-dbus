@@ -107,6 +107,7 @@ struct dho_dbus {
 static const struct dho_dbus const dhos[] = {
 	{ "interface=", DBUS_TYPE_STRING, 0, "Interface" },
 	{ "reason=", DBUS_TYPE_STRING, 0, "Reason" },
+	{ "interface_order=", DBUS_TYPE_STRING, 0, "InterfaceOrder" },
 	{ "metric=", DBUS_TYPE_UINT16, 0, "Metric" },
 	{ "ip_address=", DBUS_TYPE_UINT32, 0, "IPAddress" },
 	{ "server_name=", DBUS_TYPE_STRING, 0, "ServerName"},
