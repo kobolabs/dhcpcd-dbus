@@ -9,12 +9,6 @@ dhcpcd-4.99.9 or newer is required for for it to work
 Then just make; make install
 
 
-Notes
------
-DBus does not automatically start dhcpcd-dbus.
-This is a dhcpcd-dbus bug somewhere.
-
-
 ChangeLog
 ---------
 We do not supply a ChangeLog.
