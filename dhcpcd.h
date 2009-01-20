@@ -33,20 +33,21 @@
 extern char *dhcpcd_version;
 extern const char *dhcpcd_status;
 
-struct config {
+struct dhcpcd_config {
 	const char *iface;
 	char *data;
 	size_t data_len;
-	struct config *next;
+	struct dhcpcd_config *next;
+	struct dhcpcd_config *prev;
 };
-extern struct config *configs;
+extern struct dhcpcd_config *dhcpcd_configs;
 
 int dhcpcd_init(void);
 int dhcpcd_close(void);
-const char *get_dhcp_config(const struct config *, const char *);
-struct config *find_config(const char *iface);
+struct dhcpcd_config *dhcpcd_get_config(const char *iface);
+const char *dhcpcd_get_value(const struct dhcpcd_config *, const char *);
 ssize_t dhcpcd_command(const char *, char **);
-size_t add_dhcpcd_listeners(struct pollfd *);
-void check_dhcpcd_listeners(struct pollfd *, size_t);
+size_t dhcpcd_add_listeners(struct pollfd *);
+void dhcpcd_check_listeners(struct pollfd *, size_t);
 
 #endif

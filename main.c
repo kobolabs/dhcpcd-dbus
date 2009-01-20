@@ -57,20 +57,20 @@ main(void)
 	atexit(cleanup);
 #endif
 
-	if (init_dbus() == -1)
+	if (dhcpcd_dbus_init() == -1)
 		exit(EXIT_FAILURE);
 
 	for (;;) {
-		dhcpcd_n = add_dhcpcd_listeners(NULL);
+		dhcpcd_n = dhcpcd_add_listeners(NULL);
 		if (dhcpcd_n == 0) {
 			dhcpcd_init();
-			dhcpcd_n = add_dhcpcd_listeners(NULL);
+			dhcpcd_n = dhcpcd_add_listeners(NULL);
 			/* Attempt another dhcpcd connection */
 			t = 1000;
 		} else
 			t = -1;
 		n = dhcpcd_n;
-		n += add_dbus_listeners(NULL);
+		n += dhcpcd_dbus_add_listeners(NULL);
 		if (n > nfds) {
 			nfds = n;
 			fds = malloc(sizeof(*fds) * nfds);
@@ -79,13 +79,13 @@ main(void)
 				exit(EXIT_FAILURE);
 			}
 		}
-		n = add_dhcpcd_listeners(fds);
-		n += add_dbus_listeners(fds + n);
+		n = dhcpcd_add_listeners(fds);
+		n += dhcpcd_dbus_add_listeners(fds + n);
 		i = poll(fds, n, t);
 		if (i == 0)
 			continue;
-		check_dhcpcd_listeners(fds, n);
-		check_dbus_listeners(fds, n);
+		dhcpcd_check_listeners(fds, n);
+		dhcpcd_dbus_check_listeners(fds, n);
 	}
 	exit(EXIT_SUCCESS);
 }

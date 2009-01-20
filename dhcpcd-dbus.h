@@ -31,11 +31,11 @@
 
 #include "dhcpcd.h"
 
-int init_dbus(void);
-int close_dbus(void);
-size_t add_dbus_listeners(struct pollfd *);
-void check_dbus_listeners(struct pollfd *, size_t);
-void configure_dbus(const struct config *);
-void signal_dhcpcd_status(const char *);
+int dhcpcd_dbus_init(void);
+int dhcpcd_dbus_close(void);
+size_t dhcpcd_dbus_add_listeners(struct pollfd *);
+void dhcpcd_dbus_check_listeners(struct pollfd *, size_t);
+void dhcpcd_dbus_configure(const struct dhcpcd_config *);
+void dhcpcd_dbus_signal_status(const char *);
 
 #endif

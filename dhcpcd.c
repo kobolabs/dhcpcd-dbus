@@ -48,7 +48,8 @@
 
 char *dhcpcd_version = NULL;
 const char *dhcpcd_status = NULL;
-struct config *configs = NULL;
+struct dhcpcd_config *dhcpcd_configs = NULL;
+static char *order;
 
 static int command_fd = -1;
 static int listen_fd = -1;
@@ -124,7 +125,7 @@ dhcpcd_open(void)
 }
 
 size_t
-add_dhcpcd_listeners(struct pollfd *fds)
+dhcpcd_add_listeners(struct pollfd *fds)
 {
 	if (listen_fd == -1)
 		return 0;
@@ -137,7 +138,7 @@ add_dhcpcd_listeners(struct pollfd *fds)
 }
 
 static const char *
-_get_dhcp_config(const char *data, size_t len, const char *var)
+_get_value(const char *data, size_t len, const char *var)
 {
 	const char *end;
 	size_t vlen;
@@ -153,21 +154,23 @@ _get_dhcp_config(const char *data, size_t len, const char *var)
 }
 
 const char *
-get_dhcp_config(const struct config *c, const char *var)
+dhcpcd_get_value(const struct dhcpcd_config *c, const char *var)
 {
-	return _get_dhcp_config(c->data, c->data_len, var);
+	return _get_value(c->data, c->data_len, var);
 }
 
 static const char *
 get_status(void)
 {
 	const char *nstatus, *reason;
-	const struct config *c;
+	const struct dhcpcd_config *c;
 	const char *const *r;
 
+	if (command_fd == -1 || listen_fd == -1)
+		return "down";
 	nstatus = NULL;
-	for (c = configs; c; c = c->next) {
-		reason = get_dhcp_config(c, "reason=");
+	for (c = dhcpcd_configs; c; c = c->next) {
+		reason = dhcpcd_get_value(c, "reason=");
 		if (reason == NULL)
 			continue;
 		for (r = up_reasons; *r; r++) {
@@ -186,58 +189,93 @@ get_status(void)
 	return nstatus;
 }
 
-struct config *
-find_config(const char *iface)
+struct dhcpcd_config *
+dhcpcd_get_config(const char *iface)
 {
-	struct config *c;
+	struct dhcpcd_config *c;
 
-	for (c = configs; c; c = c->next)
+	for (c = dhcpcd_configs; c; c = c->next)
 		if (strcmp(c->iface, iface) == 0)
 			return c;
 	return NULL;
 }
 
-static struct config *
-add_config(char *data, size_t len)
+static void
+sort_configs(void)
+{
+	struct dhcpcd_config *c, *nc = NULL, *nl = NULL;
+	char *tmp, *p, *token;
+
+	if (order == NULL)
+		return;
+	tmp = p = strdup(order);
+	while ((token = strsep(&p, " "))) {
+		if (*token == '\0')
+			continue;
+		c = dhcpcd_get_config(token);
+		if (c == NULL)
+			continue;
+		if (c->next)
+			c->next->prev = c->prev;
+		if (c->prev)
+			c->prev->next = c->next;
+		else
+			dhcpcd_configs = c->next;
+		c->next = NULL;
+		c->prev = nl;
+		if (nl) {
+			nl->next = c;
+			nl = c;
+		} else
+			nc = nl = c;
+	}
+	free(tmp);
+	dhcpcd_configs = nc;
+
+	printf ("new order: ");
+	for (c = dhcpcd_configs; c; c = c->next)
+		printf ("%s ", c->iface);
+	printf ("\n");
+}
+
+static struct dhcpcd_config *
+prepend_config(char *data, size_t len)
 {
 	const char *iface;
-	struct config *c, *cn;
+	struct dhcpcd_config *c;
 
-	iface = _get_dhcp_config(data, len, "interface=");
+	iface = _get_value(data, len, "interface=");
 	if (iface == NULL) {
 		syslog(LOG_ERR, "dhcpcd: no interface in config");
 		return NULL;
 	}
-	c = find_config(iface);
+	c = dhcpcd_get_config(iface);
 	if (c == NULL) {
 		c = malloc(sizeof(*c));
 		if (c == NULL) {
 			syslog(LOG_ERR, "malloc: %m");
 			return NULL;
 		}
-		if (configs) {
-			cn = configs;
-			while (cn->next)
-				cn = cn->next;
-			cn->next = c;
-		} else
-			configs  =c;
-		c->next = NULL;
+		if (dhcpcd_configs)
+			dhcpcd_configs->prev = c;
+		c->iface = iface;
+		c->next = dhcpcd_configs;
+		c->prev = NULL;
+		dhcpcd_configs = c;
 	} else
 		free(c->data);
 
-	c->iface = iface;
 	c->data = data;
 	c->data_len = len;
 	return c;
 }
 
-static struct config *
+static struct dhcpcd_config *
 read_config(int fd)
 {
 	char sbuf[sizeof(ssize_t)], *rbuf;
 	ssize_t bytes, len;
-	struct config *c;
+	struct dhcpcd_config *c;
 
 	bytes = read(fd, sbuf, sizeof(sbuf));
 	if (bytes == 0 || bytes == -1) {
@@ -262,7 +300,7 @@ read_config(int fd)
 		return NULL;
 	}
 	rbuf[bytes] = '\0';
-	c = add_config(rbuf, len);
+	c = prepend_config(rbuf, len);
 	if (c == NULL) {
 		free(rbuf);
 		return NULL;
@@ -271,10 +309,10 @@ read_config(int fd)
 }
 
 void
-check_dhcpcd_listeners(struct pollfd *fds, size_t nfds)
+dhcpcd_check_listeners(struct pollfd *fds, size_t nfds)
 {
 	size_t i;
-	struct config *c;
+	struct dhcpcd_config *c;
 	const char *nstatus;
 
 	for (i = 0; i < nfds; i++) {
@@ -286,13 +324,37 @@ check_dhcpcd_listeners(struct pollfd *fds, size_t nfds)
 				dhcpcd_close();
 				break;
 			}
-			configure_dbus(c);
+			nstatus = dhcpcd_get_value(c, "interface_order=");
+			if (nstatus == NULL ||
+			    order == NULL ||
+			    strcmp(nstatus, order))
+			{
+				free(order);
+				if (nstatus == NULL)
+					order = NULL;
+				else
+					order = strdup(nstatus);
+				sort_configs();
+			}
+			dhcpcd_dbus_configure(c);
 			nstatus = get_status();
 			if (strcmp(nstatus, dhcpcd_status)) {
 				dhcpcd_status = nstatus;
-				signal_dhcpcd_status(nstatus);
+				dhcpcd_dbus_signal_status(nstatus);
 			}
 		}
+	}
+}
+
+static void
+free_configs(void)
+{
+	struct dhcpcd_config *c;
+
+	while (dhcpcd_configs != NULL) {
+		c = dhcpcd_configs->next;
+		free(dhcpcd_configs);
+		dhcpcd_configs = c;
 	}
 }
 
@@ -301,7 +363,7 @@ dhcpcd_init(void)
 {
 	char cmd[128];
 	ssize_t nifs, bytes;
-	struct config *c;
+	struct dhcpcd_config *c;
 	static int last_errno;
 	const char *nstatus;
 
@@ -328,11 +390,7 @@ dhcpcd_init(void)
 		return -1;
 	_dhcpcd_command(listen_fd, "--listen", NULL);
 
-	while (configs != NULL) {
-		c = configs->next;
-		free(configs);
-		configs = c;
-	}
+	free_configs();
 	dhcpcd_command("--getinterfaces", NULL);
 	bytes = read(command_fd, cmd, sizeof(ssize_t));
 	if (bytes != sizeof(ssize_t))
@@ -340,16 +398,23 @@ dhcpcd_init(void)
 	memcpy(&nifs, cmd, sizeof(ssize_t));
 	for (;nifs > 0; nifs--) {
 		c = read_config(command_fd);
+		nstatus = dhcpcd_get_value(c, "interface_order=");
+		if (nstatus != NULL) {
+			free(order);
+			order = strdup(nstatus);
+		}
 		if (c == NULL)
-			return configs == NULL ? -1 : 0;
+			return dhcpcd_configs == NULL ? -1 : 0;
 		syslog(LOG_INFO, "retrieved interface %s (%s)",
-		       c->iface, get_dhcp_config(c, "reason="));
+		       c->iface, dhcpcd_get_value(c, "reason="));
 	}
+
+	sort_configs();
 
 	nstatus = get_status();
 	if (dhcpcd_status == NULL || strcmp(nstatus, dhcpcd_status)) {
 		dhcpcd_status = nstatus;
-		signal_dhcpcd_status(nstatus);
+		dhcpcd_dbus_signal_status(nstatus);
 	}
 
 	return 0;
@@ -359,17 +424,13 @@ int
 dhcpcd_close(void)
 {
 	int retval;
-	struct config *c;
 
 	retval = shutdown(command_fd, SHUT_RDWR);
 	command_fd = -1;
 	retval |= shutdown(listen_fd, SHUT_RDWR);
 	listen_fd = -1;
-	while (configs != NULL) {
-		c = configs->next;
-		free(configs->data);
-		free(configs);
-		configs = c;
-	}
+	free_configs();
+	dhcpcd_status = "down";
+	dhcpcd_dbus_signal_status(dhcpcd_status);
 	return retval;
 }

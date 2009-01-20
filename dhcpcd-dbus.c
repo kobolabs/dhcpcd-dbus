@@ -74,7 +74,10 @@ static const char *introspection_xml =
 	"    </method>\n"
 	"    <method name=\"GetInterface\">\n"
 	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
-	"      <arg name=\"interfaces\" direction=\"out\" type=\"av\"/>\n"
+	"      <arg name=\"interface\" direction=\"out\" type=\"av\"/>\n"
+	"    </method>\n"
+	"    <method name=\"GetInterfaces\">\n"
+	"      <arg name=\"interfaces\" direction=\"out\" type=\"as\"/>\n"
 	"    </method>\n"
 	"    <method name=\"GetStatus\">\n"
 	"      <arg name=\"Status\" direction=\"out\" type=\"s\"/>\n"
@@ -369,7 +372,8 @@ append_config_item(DBusMessageIter *iter, const struct dho_dbus *dhop,
 }
 
 static int
-append_config(DBusMessageIter *iter, const char *prefix, const struct config *c)
+append_config(DBusMessageIter *iter,
+		const char *prefix, const struct dhcpcd_config *c)
 {
 	char *p, *e;
 	const struct dho_dbus *dhop;
@@ -435,7 +439,7 @@ return_status(DBusConnection *con, DBusMessage *msg)
 }
 
 void
-signal_dhcpcd_status(const char *status)
+dhcpcd_dbus_signal_status(const char *status)
 {
 	DBusMessage *msg;
 	DBusMessageIter args;
@@ -456,7 +460,7 @@ signal_dhcpcd_status(const char *status)
 }
 
 void
-configure_dbus(const struct config *c)
+dhcpcd_dbus_configure(const struct dhcpcd_config *c)
 {
 	int retval;
 	DBusMessage* msg = NULL;
@@ -468,7 +472,7 @@ configure_dbus(const struct config *c)
 		return;
 	}
 
-	syslog(LOG_INFO, "event on interface %s (%s)", c->iface, get_dhcp_config(c, "reason="));
+	syslog(LOG_INFO, "event on interface %s (%s)", c->iface, dhcpcd_get_value(c, "reason="));
 	dbus_message_iter_init_append(msg, &args);
 	dbus_message_iter_open_container(&args,
 					 DBUS_TYPE_ARRAY,
@@ -477,7 +481,7 @@ configure_dbus(const struct config *c)
 					 DBUS_TYPE_VARIANT_AS_STRING
 					 DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
 					 &dict);
-	if (get_dhcp_config(c, "new_ip_address"))
+	if (dhcpcd_get_value(c, "new_ip_address"))
 		retval = append_config(&dict, "new_", c);
 	else
 		retval = append_config(&dict, "old_", c);
@@ -521,11 +525,11 @@ version(DBusConnection *con, DBusMessage *msg, const char *ver)
 }
 
 static DBusHandlerResult
-dhcpcd_get_interfaces(DBusConnection *con, DBusMessage *msg)
+dhcpcd_get_interface(DBusConnection *con, DBusMessage *msg)
 {
 	DBusMessage *reply;
 	DBusMessageIter ifaces, iface, entry, dict;
-	struct config *c;
+	const struct dhcpcd_config *c;
 
 	reply = dbus_message_new_method_return(msg);
 	dbus_message_iter_init_append(reply, &ifaces);
@@ -542,7 +546,7 @@ dhcpcd_get_interfaces(DBusConnection *con, DBusMessage *msg)
 					 DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
 					 &iface);
 
-	for (c = configs; c; c = c->next) {
+	for (c = dhcpcd_configs; c; c = c->next) {
 		dbus_message_iter_open_container(&iface,
 						 DBUS_TYPE_DICT_ENTRY,
 						 NULL,
@@ -561,6 +565,32 @@ dhcpcd_get_interfaces(DBusConnection *con, DBusMessage *msg)
 		dbus_message_iter_close_container(&entry, &dict);
 		dbus_message_iter_close_container(&iface, &entry);
 	}
+
+	dbus_message_iter_close_container(&ifaces, &iface);
+	dbus_connection_send(con, reply, NULL);
+	dbus_message_unref(reply);
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
+static DBusHandlerResult
+dhcpcd_get_interfaces(DBusConnection *con, DBusMessage *msg)
+{
+	DBusMessage *reply;
+	DBusMessageIter ifaces, iface;
+	const struct dhcpcd_config *c;
+
+	reply = dbus_message_new_method_return(msg);
+	dbus_message_iter_init_append(reply, &ifaces);
+
+	dbus_message_iter_open_container(&ifaces,
+					 DBUS_TYPE_ARRAY,
+					 DBUS_TYPE_STRING_AS_STRING,
+					 &iface);
+
+	for (c = dhcpcd_configs; c; c = c->next)
+		dbus_message_iter_append_basic(&iface,
+					       DBUS_TYPE_STRING,
+					       &c->iface);
 
 	dbus_message_iter_close_container(&ifaces, &iface);
 	dbus_connection_send(con, reply, NULL);
@@ -610,6 +640,10 @@ msg_handler(DBusConnection *con, DBusMessage *msg, _unused void *data)
 					     DHCPCD_SERVICE,
 					     "GetInterfaces"))
 		return dhcpcd_get_interfaces(con, msg);
+	else if (dbus_message_is_method_call(msg,
+					     DHCPCD_SERVICE,
+					     "GetInterface"))
+		return dhcpcd_get_interface(con, msg);
 	else if (dbus_message_is_method_call(msg,
 					     DHCPCD_SERVICE,
 					     "GetStatus"))
@@ -664,7 +698,7 @@ remove_watch(DBusWatch *watch, _unused void *data)
 }
 
 size_t
-add_dbus_listeners(struct pollfd *fds)
+dhcpcd_dbus_add_listeners(struct pollfd *fds)
 {
 	struct watch *w;
 	int flags;
@@ -690,7 +724,7 @@ add_dbus_listeners(struct pollfd *fds)
 }
 
 void
-check_dbus_listeners(struct pollfd *fds, size_t nfds)
+dhcpcd_dbus_check_listeners(struct pollfd *fds, size_t nfds)
 {
 	struct watch *w;
 	int fd, flags;
@@ -728,7 +762,7 @@ check_dbus_listeners(struct pollfd *fds, size_t nfds)
 }
 
 int
-init_dbus(void)
+dhcpcd_dbus_init(void)
 {
 	DBusObjectPathVTable vt = {NULL, &msg_handler, NULL, NULL, NULL, NULL };
 	DBusError err;
