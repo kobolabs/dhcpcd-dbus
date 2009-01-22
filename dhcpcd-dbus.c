@@ -72,12 +72,11 @@ static const char *introspection_xml =
 	"    <method name=\"GetDhcpcdVersion\">\n"
 	"      <arg name=\"version\" direction=\"out\" type=\"s\"/>\n"
 	"    </method>\n"
-	"    <method name=\"GetInterface\">\n"
-	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
-	"      <arg name=\"interface\" direction=\"out\" type=\"av\"/>\n"
+	"    <method name=\"ListInterfaces\">\n"
+	"      <arg name=\"interfaces\" direction=\"out\" type=\"as\"/>\n"
 	"    </method>\n"
 	"    <method name=\"GetInterfaces\">\n"
-	"      <arg name=\"interfaces\" direction=\"out\" type=\"as\"/>\n"
+	"      <arg name=\"interfaces\" direction=\"out\" type=\"av\"/>\n"
 	"    </method>\n"
 	"    <method name=\"GetStatus\">\n"
 	"      <arg name=\"Status\" direction=\"out\" type=\"s\"/>\n"
@@ -525,7 +524,7 @@ version(DBusConnection *con, DBusMessage *msg, const char *ver)
 }
 
 static DBusHandlerResult
-dhcpcd_get_interface(DBusConnection *con, DBusMessage *msg)
+dhcpcd_get_interfaces(DBusConnection *con, DBusMessage *msg)
 {
 	DBusMessage *reply;
 	DBusMessageIter ifaces, iface, entry, dict;
@@ -573,7 +572,7 @@ dhcpcd_get_interface(DBusConnection *con, DBusMessage *msg)
 }
 
 static DBusHandlerResult
-dhcpcd_get_interfaces(DBusConnection *con, DBusMessage *msg)
+dhcpcd_list_interfaces(DBusConnection *con, DBusMessage *msg)
 {
 	DBusMessage *reply;
 	DBusMessageIter ifaces, iface;
@@ -638,12 +637,12 @@ msg_handler(DBusConnection *con, DBusMessage *msg, _unused void *data)
 		return version(con, msg, dhcpcd_version);
 	else if (dbus_message_is_method_call(msg,
 					     DHCPCD_SERVICE,
-					     "GetInterfaces"))
-		return dhcpcd_get_interfaces(con, msg);
+					     "ListInterfaces"))
+		return dhcpcd_list_interfaces(con, msg);
 	else if (dbus_message_is_method_call(msg,
 					     DHCPCD_SERVICE,
-					     "GetInterface"))
-		return dhcpcd_get_interface(con, msg);
+					     "GetInterfaces"))
+		return dhcpcd_get_interfaces(con, msg);
 	else if (dbus_message_is_method_call(msg,
 					     DHCPCD_SERVICE,
 					     "GetStatus"))
