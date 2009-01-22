@@ -109,6 +109,8 @@ struct dho_dbus {
 static const struct dho_dbus const dhos[] = {
 	{ "interface=", DBUS_TYPE_STRING, 0, "Interface" },
 	{ "reason=", DBUS_TYPE_STRING, 0, "Reason" },
+	{ "wireless=", DBUS_TYPE_BOOLEAN, 0, "Wireless" },
+	{ "ssid=", DBUS_TYPE_STRING, 0, "SSID" },
 	{ "interface_order=", DBUS_TYPE_STRING, 0, "InterfaceOrder" },
 	{ "metric=", DBUS_TYPE_UINT16, 0, "Metric" },
 	{ "ip_address=", DBUS_TYPE_UINT32, 0, "IPAddress" },
@@ -218,6 +220,17 @@ append_config_value(DBusMessageIter *entry, int type,
 
 	retval = -1;
 	switch (type) {
+	case DBUS_TYPE_BOOLEAN:
+		u32 = strtoul(data, NULL, 0);
+		dbus_message_iter_open_container(entry,
+						 DBUS_TYPE_VARIANT,
+						 DBUS_TYPE_BOOLEAN_AS_STRING,
+						 &var);
+		if (dbus_message_iter_append_basic(&var,
+						   DBUS_TYPE_BOOLEAN,
+						   &u32))
+			retval = 0;
+		break;
 	case DBUS_TYPE_BYTE:
 		byte = strtoul(data, NULL, 0);
 		dbus_message_iter_open_container(entry,
