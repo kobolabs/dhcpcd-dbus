@@ -370,6 +370,8 @@ append_config_item(DBusMessageIter *iter, const struct dho_dbus *dhop,
 	DBusMessageIter entry;
 
 	retval = 0;
+	if (*data == '\0')
+		return retval;
 	dbus_message_iter_open_container(iter,
 					 DBUS_TYPE_DICT_ENTRY,
 					 NULL,
@@ -400,13 +402,15 @@ append_config(DBusMessageIter *iter,
 		for (dhop = dhos; dhop->var; dhop++) {
 			l = strlen(dhop->var);
 			if (strncmp(p, dhop->var, l) == 0) {
-				retval = append_config_item(iter, dhop, p + l);
+				p += l;
+				retval = append_config_item(iter, dhop, p);
 				break;
 			}
 			if (strncmp(p, prefix, lp) == 0 &&
-			    strncmp(p + lp, dhop->var, l - lp) == 0)
+			    strncmp(p + lp, dhop->var, l) == 0)
 			{
-				retval = append_config_item(iter, dhop, p + l + lp);
+				p += l + lp;
+				retval = append_config_item(iter, dhop, p);
 				break;
 			}
 		}
