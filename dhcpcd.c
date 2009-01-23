@@ -308,12 +308,25 @@ read_config(int fd)
 	return c;
 }
 
+static void
+update_status(void)
+{
+	const char *nstatus;
+
+	nstatus = get_status();
+	if (dhcpcd_status == NULL || strcmp(nstatus, dhcpcd_status)) {
+		dhcpcd_status = nstatus;
+		dhcpcd_dbus_signal_status(nstatus);
+	}
+}
+
+
 void
 dhcpcd_check_listeners(struct pollfd *fds, size_t nfds)
 {
 	size_t i;
 	struct dhcpcd_config *c;
-	const char *nstatus;
+	const char *ifo;
 
 	for (i = 0; i < nfds; i++) {
 		if (fds[i].fd != listen_fd)
@@ -324,24 +337,20 @@ dhcpcd_check_listeners(struct pollfd *fds, size_t nfds)
 				dhcpcd_close();
 				break;
 			}
-			nstatus = dhcpcd_get_value(c, "interface_order=");
-			if (nstatus == NULL ||
+			ifo = dhcpcd_get_value(c, "interface_order=");
+			if (ifo == NULL ||
 			    order == NULL ||
-			    strcmp(nstatus, order))
+			    strcmp(ifo, order))
 			{
 				free(order);
-				if (nstatus == NULL)
+				if (ifo == NULL)
 					order = NULL;
 				else
-					order = strdup(nstatus);
+					order = strdup(ifo);
 				sort_configs();
 			}
 			dhcpcd_dbus_configure(c);
-			nstatus = get_status();
-			if (strcmp(nstatus, dhcpcd_status)) {
-				dhcpcd_status = nstatus;
-				dhcpcd_dbus_signal_status(nstatus);
-			}
+			update_status();
 		}
 	}
 }
@@ -365,7 +374,7 @@ dhcpcd_init(void)
 	ssize_t nifs, bytes;
 	struct dhcpcd_config *c;
 	static int last_errno;
-	const char *nstatus;
+	const char *ifo;
 
 	if (command_fd != -1)
 		return 0;
@@ -375,6 +384,7 @@ dhcpcd_init(void)
 			last_errno = errno;
 			syslog(LOG_ERR, "failed to connect to dhcpcd: %m");
 		}
+		update_status();
 		return -1;
 	}
 
@@ -386,8 +396,10 @@ dhcpcd_init(void)
 	}
 
 	listen_fd = dhcpcd_open();
-	if (listen_fd == -1)
+	if (listen_fd == -1) {
+		update_status();
 		return -1;
+	}
 	_dhcpcd_command(listen_fd, "--listen", NULL);
 
 	free_configs();
@@ -398,10 +410,10 @@ dhcpcd_init(void)
 	memcpy(&nifs, cmd, sizeof(ssize_t));
 	for (;nifs > 0; nifs--) {
 		c = read_config(command_fd);
-		nstatus = dhcpcd_get_value(c, "interface_order=");
-		if (nstatus != NULL) {
+		ifo = dhcpcd_get_value(c, "interface_order=");
+		if (ifo != NULL) {
 			free(order);
-			order = strdup(nstatus);
+			order = strdup(ifo);
 		}
 		if (c == NULL)
 			return dhcpcd_configs == NULL ? -1 : 0;
@@ -410,12 +422,7 @@ dhcpcd_init(void)
 	}
 
 	sort_configs();
-
-	nstatus = get_status();
-	if (dhcpcd_status == NULL || strcmp(nstatus, dhcpcd_status)) {
-		dhcpcd_status = nstatus;
-		dhcpcd_dbus_signal_status(nstatus);
-	}
+	update_status();
 
 	return 0;
 }
