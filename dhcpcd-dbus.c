@@ -402,15 +402,14 @@ append_config(DBusMessageIter *iter,
 		for (dhop = dhos; dhop->var; dhop++) {
 			l = strlen(dhop->var);
 			if (strncmp(p, dhop->var, l) == 0) {
-				p += l;
-				retval = append_config_item(iter, dhop, p);
+				retval = append_config_item(iter, dhop, p + l);
 				break;
 			}
 			if (strncmp(p, prefix, lp) == 0 &&
 			    strncmp(p + lp, dhop->var, l) == 0)
 			{
-				p += l + lp;
-				retval = append_config_item(iter, dhop, p);
+				retval = append_config_item(iter, dhop,
+							    p + l + lp);
 				break;
 			}
 		}
@@ -481,6 +480,7 @@ dhcpcd_dbus_configure(const struct dhcpcd_config *c)
 	int retval;
 	DBusMessage* msg = NULL;
 	DBusMessageIter args, dict;
+	const char *reason;
 
 	msg = dbus_message_new_signal(DHCPCD_PATH, DHCPCD_SERVICE, "Event");
 	if (msg == NULL) {
@@ -488,7 +488,8 @@ dhcpcd_dbus_configure(const struct dhcpcd_config *c)
 		return;
 	}
 
-	syslog(LOG_INFO, "event on interface %s (%s)", c->iface, dhcpcd_get_value(c, "reason="));
+	reason = dhcpcd_get_value(c, "reason=");
+	syslog(LOG_INFO, "event on interface %s (%s)", c->iface, reason);
 	dbus_message_iter_init_append(msg, &args);
 	dbus_message_iter_open_container(&args,
 					 DBUS_TYPE_ARRAY,
@@ -497,7 +498,8 @@ dhcpcd_dbus_configure(const struct dhcpcd_config *c)
 					 DBUS_TYPE_VARIANT_AS_STRING
 					 DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
 					 &dict);
-	if (dhcpcd_get_value(c, "new_ip_address"))
+	if (dhcpcd_get_value(c, "new_ip_address") ||
+	    strcmp(reason, "CARRIER") == 0)
 		retval = append_config(&dict, "new_", c);
 	else
 		retval = append_config(&dict, "old_", c);
