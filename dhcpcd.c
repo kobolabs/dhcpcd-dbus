@@ -258,13 +258,13 @@ prepend_config(char *data, size_t len)
 		}
 		if (dhcpcd_configs)
 			dhcpcd_configs->prev = c;
-		c->iface = iface;
 		c->next = dhcpcd_configs;
 		c->prev = NULL;
 		dhcpcd_configs = c;
 	} else
 		free(c->data);
 
+	c->iface = iface;
 	c->data = data;
 	c->data_len = len;
 	return c;
