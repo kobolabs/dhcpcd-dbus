@@ -221,7 +221,10 @@ append_config_value(DBusMessageIter *entry, int type,
 	retval = -1;
 	switch (type) {
 	case DBUS_TYPE_BOOLEAN:
-		u32 = strtoul(data, NULL, 0);
+		if (*data == '0' || *data == '\0')
+			u32 = 0;
+		else
+			u32 = 1;
 		dbus_message_iter_open_container(entry,
 						 DBUS_TYPE_VARIANT,
 						 DBUS_TYPE_BOOLEAN_AS_STRING,
