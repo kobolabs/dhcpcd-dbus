@@ -3,7 +3,7 @@
 # Copyright 2008 Roy Marples <roy@marples.name>
 
 PROG=		dhcpcd-dbus
-SRCS=		dhcpcd.c dhcpcd-dbus.c main.c
+SRCS=		dhcpcd.c dhcpcd-dbus.c wpa.c main.c
 
 CONFFILES=	dhcpcd-dbus.conf
 FILES=		name.marples.roy.dhcpcd.service

@@ -24,13 +24,16 @@
  * SUCH DAMAGE.
  */
 
+#include <errno.h>
 #include <poll.h>
 #include <stdlib.h>
 #include <syslog.h>
+#include <string.h>
 
 #include "config.h"
 #include "dhcpcd.h"
 #include "dhcpcd-dbus.h"
+#include "wpa.h"
 
 static struct pollfd *fds;
 static size_t nfds;
@@ -40,6 +43,7 @@ static void
 cleanup(void)
 {
 	free(fds);
+	wpa_close(NULL);
 }
 #endif
 

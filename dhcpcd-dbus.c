@@ -37,16 +37,9 @@
 #include "config.h"
 #include "dhcpcd-dbus.h"
 #include "dhcpcd.h"
+#include "wpa.h"
 
 #define S_EINVAL	DHCPCD_SERVICE ".InvalidArgument"
-
-#if defined(__GNUC__)
-# define _printf(a, b)  __attribute__((__format__(__printf__, a, b)))
-# define _unused __attribute__((__unused__))
-#else
-# define _printf(a, b)
-# define _unused
-#endif
 
 static DBusConnection *connection;
 struct watch {
@@ -89,6 +82,13 @@ static const char *introspection_xml =
 	"    </method>\n"
 	"    <method name=\"Stop\">\n"
 	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
+	"    </method>\n"
+	"    <method name=\"StartScan\">\n"
+	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
+	"    </method>\n"
+	"    <method name=\"GetScanResults\">\n"
+	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
+	"      <arg name=\"results\" direction=\"out\" type=\"av\"/>\n"
 	"    </method>\n"
 	"    <signal name=\"Event\">\n"
 	"      <arg name=\"configuration\" type=\"a\">\n"
@@ -345,10 +345,6 @@ append_config_array(DBusMessageIter *entry, int type,
 				u32 = in.s_addr;
 			else
 				u32 = strtoul(tok, NULL, 0);
-			ok = dbus_message_iter_append_basic(&array,
-							    DBUS_TYPE_UINT32,
-							    &u32);
-
 			ok = dbus_message_iter_append_basic(&array,
 							    DBUS_TYPE_UINT32,
 							    &u32);
@@ -643,6 +639,87 @@ dhcpcd_iface_command(DBusConnection *con, DBusMessage *msg,
 }
 
 static DBusHandlerResult
+start_scan(DBusConnection *con, DBusMessage *msg)
+{
+	DBusMessage *reply;
+	DBusError err;
+	char *s;
+
+	dbus_error_init(&err);
+	if (!dbus_message_get_args(msg, &err,
+				  DBUS_TYPE_STRING, &s, DBUS_TYPE_INVALID))
+		return return_dbus_error(con, msg, S_EINVAL,
+					 "No interface specified");
+	wpa_open(s);
+	wpa_cmd(s, "SCAN", NULL, 0);
+	wpa_close(s);
+	reply = dbus_message_new_method_return(msg);
+	dbus_connection_send(con, reply, NULL);
+	dbus_message_unref(reply);
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
+static DBusHandlerResult
+get_scan_results(DBusConnection *con, DBusMessage *msg)
+{
+	DBusMessage *reply;
+	DBusMessageIter iter, array, entry;
+	DBusError err;
+	char *s, *p, *t;
+	char buffer[2048];
+	dbus_uint32_t u32;
+	int i;
+
+	dbus_error_init(&err);
+	if (!dbus_message_get_args(msg, &err,
+				  DBUS_TYPE_STRING, &s, DBUS_TYPE_INVALID))
+		return return_dbus_error(con, msg, S_EINVAL,
+					 "No interface specified");
+	wpa_open(s);
+	wpa_cmd(s, "SCAN_RESULTS", buffer, sizeof(buffer));
+	wpa_close(s);
+
+	reply = dbus_message_new_method_return(msg);
+	dbus_message_iter_init_append(reply, &iter);
+	dbus_message_iter_open_container(&iter,
+					 DBUS_TYPE_ARRAY,
+					 DBUS_STRUCT_BEGIN_CHAR_AS_STRING
+					 DBUS_TYPE_STRING_AS_STRING
+					 DBUS_TYPE_UINT32_AS_STRING
+					 DBUS_TYPE_UINT32_AS_STRING
+					 DBUS_TYPE_STRING_AS_STRING
+					 DBUS_TYPE_STRING_AS_STRING
+					 DBUS_STRUCT_END_CHAR_AS_STRING,
+					 &array);
+	s = buffer;
+	while ((p = strsep(&s, "\n")) != NULL) {
+		if (p == buffer || *p == '\0')
+			continue;
+		dbus_message_iter_open_container(&array,
+						 DBUS_TYPE_STRUCT,
+						 NULL,
+						 &entry);
+		i = 0;
+		while ((t = strsep(&p, "\t")) != NULL) {
+			i++;
+			if (i == 2 || i == 3) {
+				u32 = strtoul(t, NULL, 0);
+				dbus_message_iter_append_basic(&entry,
+							       DBUS_TYPE_UINT32, &u32);
+			} else
+				dbus_message_iter_append_basic(&entry,
+							       DBUS_TYPE_STRING,
+							       &t);
+		}
+		dbus_message_iter_close_container(&array, &entry);
+	}
+	dbus_message_iter_close_container(&iter, &array);
+	dbus_connection_send(con, reply, NULL);
+	dbus_message_unref(reply);
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
+static DBusHandlerResult
 msg_handler(DBusConnection *con, DBusMessage *msg, _unused void *data)
 {
 	if (dbus_message_is_method_call(msg,
@@ -681,6 +758,14 @@ msg_handler(DBusConnection *con, DBusMessage *msg, _unused void *data)
 					     DHCPCD_SERVICE,
 					     "Stop"))
 		return dhcpcd_iface_command(con, msg, "--exit");
+	else if (dbus_message_is_method_call(msg,
+					     DHCPCD_SERVICE,
+					     "StartScan"))
+		return start_scan(con, msg);
+	else if (dbus_message_is_method_call(msg,
+					     DHCPCD_SERVICE,
+					     "GetScanResults"))
+		return get_scan_results(con, msg);
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
@@ -721,7 +806,7 @@ remove_watch(DBusWatch *watch, _unused void *data)
 size_t
 dhcpcd_dbus_add_listeners(struct pollfd *fds)
 {
-	struct watch *w;
+	const struct watch *w;
 	int flags;
 	size_t n;
 
