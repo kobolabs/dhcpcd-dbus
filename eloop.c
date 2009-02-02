@@ -269,6 +269,7 @@ delete_timeout(void (*callback)(void *), void *arg)
 	struct timeout *t, *tt, *last = NULL;
 	int n;
 
+	n = 0;
 	for (t = timeouts; t && (tt = t->next, 1); t = tt) {
 		if (t->arg == arg &&
 		    (!callback || t->callback == callback))

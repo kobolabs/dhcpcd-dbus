@@ -91,6 +91,7 @@ attach_scan_results(const char *iface, DBusMessageIter *iter)
 					 DBUS_TYPE_VARIANT_AS_STRING
 					 DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
 					 &array);
+	retval = 0;
 	for (i = 0; i < 1000; i++) {
 		snprintf(cmd, sizeof(cmd), "BSS %d", i);
 		bytes = wpa_cmd(iface, cmd, buffer, sizeof(buffer));

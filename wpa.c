@@ -106,7 +106,9 @@ _wpa_cmd(int fd, const char *cmd, char *buffer, ssize_t len)
 	ssize_t bytes;
 	struct pollfd pfd;
 
-	write(fd, cmd, strlen(cmd));
+	bytes = write(fd, cmd, strlen(cmd));
+	if (bytes == -1 || bytes == 0)
+		return -1;
 	if (buffer == NULL || len == 0)
 		return 0;
 	pfd.fd = fd;
