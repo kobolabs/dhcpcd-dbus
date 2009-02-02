@@ -29,6 +29,7 @@
 #include <sys/un.h>
 
 #include <errno.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -38,13 +39,8 @@
 #include "config.h"
 #include "dhcpcd.h"
 #include "dhcpcd-dbus.h"
-
-/* Only GLIBC doesn't support strlcpy */
-#ifdef __GLIBC__
-#  if !defined(__UCLIBC__) && !defined (__dietlibc__)
-#    define strlcpy(dst, src, n) snprintf(dst, n, "%s", src);
-#  endif
-#endif
+#include "eloop.h"
+#include "wpa.h"
 
 char *dhcpcd_version = NULL;
 const char *dhcpcd_status = NULL;
@@ -64,6 +60,20 @@ const char *const up_reasons[] = {
 	"TIMEOUT",
 	NULL
 };
+
+int
+set_nonblock(int fd)
+{
+	int flags;
+
+	if ((flags = fcntl(fd, F_GETFL, 0)) == -1
+	    || fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1)
+	{
+		syslog(LOG_ERR, "fcntl: %m");
+		return -1;
+	}
+	return 0;
+}
 
 static ssize_t
 _dhcpcd_command(int fd, const char *cmd, char **buffer) 
@@ -320,39 +330,33 @@ update_status(void)
 	}
 }
 
-
-void
-dhcpcd_check_listeners(struct pollfd *fds, size_t nfds)
+static void
+handle_event(_unused void *data)
 {
-	size_t i;
 	struct dhcpcd_config *c;
-	const char *ifo;
+	const char *str;
 
-	for (i = 0; i < nfds; i++) {
-		if (fds[i].fd != listen_fd)
-			continue;
-		if (fds[i].revents & POLLIN) {
-			c = read_config(fds[i].fd);
-			if (c == NULL) {
-				dhcpcd_close();
-				break;
-			}
-			ifo = dhcpcd_get_value(c, "interface_order=");
-			if (ifo == NULL ||
-			    order == NULL ||
-			    strcmp(ifo, order))
-			{
-				free(order);
-				if (ifo == NULL)
-					order = NULL;
-				else
-					order = strdup(ifo);
-				sort_configs();
-			}
-			dhcpcd_dbus_configure(c);
-			update_status();
-		}
+	c = read_config(listen_fd);
+	if (c == NULL) {
+		dhcpcd_close();
+		add_timeout_sec(1, dhcpcd_init, NULL);
+		return;
 	}
+	str = dhcpcd_get_value(c, "interface_order=");
+	if (str == NULL ||
+	    order == NULL ||
+	    strcmp(str, order))
+	{
+		free(order);
+		if (str == NULL)
+			order = NULL;
+		else
+			order = strdup(str);
+		sort_configs();
+	}
+	dhcpcd_dbus_configure(c);
+	wpa_configure(c);
+	update_status();
 }
 
 static void
@@ -367,8 +371,8 @@ free_configs(void)
 	}
 }
 
-int
-dhcpcd_init(void)
+void
+dhcpcd_init(_unused void *data)
 {
 	char cmd[128];
 	ssize_t nifs, bytes;
@@ -377,7 +381,7 @@ dhcpcd_init(void)
 	const char *ifo;
 
 	if (command_fd != -1)
-		return 0;
+		return;
 	command_fd = dhcpcd_open();
 	if (command_fd == -1) {
 		if (errno != last_errno) {
@@ -385,7 +389,8 @@ dhcpcd_init(void)
 			syslog(LOG_ERR, "failed to connect to dhcpcd: %m");
 		}
 		update_status();
-		return -1;
+		add_timeout_sec(1, dhcpcd_init, NULL);
+		return;
 	}
 
 	if (dhcpcd_command("--version", &dhcpcd_version) > 0) {
@@ -398,15 +403,17 @@ dhcpcd_init(void)
 	listen_fd = dhcpcd_open();
 	if (listen_fd == -1) {
 		update_status();
-		return -1;
+		add_timeout_sec(1, dhcpcd_init, NULL);
+		return;
 	}
 	_dhcpcd_command(listen_fd, "--listen", NULL);
+	set_nonblock(listen_fd);
 
 	free_configs();
 	dhcpcd_command("--getinterfaces", NULL);
 	bytes = read(command_fd, cmd, sizeof(ssize_t));
 	if (bytes != sizeof(ssize_t))
-		return bytes;
+		return;
 	memcpy(&nifs, cmd, sizeof(ssize_t));
 	for (;nifs > 0; nifs--) {
 		c = read_config(command_fd);
@@ -416,15 +423,19 @@ dhcpcd_init(void)
 			order = strdup(ifo);
 		}
 		if (c == NULL)
-			return dhcpcd_configs == NULL ? -1 : 0;
+			return;
 		syslog(LOG_INFO, "retrieved interface %s (%s)",
 		       c->iface, dhcpcd_get_value(c, "reason="));
 	}
 
 	sort_configs();
 	update_status();
+	for (c = dhcpcd_configs; c; c = c->next)
+		wpa_configure(c);
 
-	return 0;
+	add_event(listen_fd, handle_event, NULL);
+
+	return;
 }
 
 int

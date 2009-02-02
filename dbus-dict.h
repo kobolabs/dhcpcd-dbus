@@ -24,26 +24,20 @@
  * SUCH DAMAGE.
  */
 
-#ifndef DHCPCD_DBUS_H
-#define DHCPCD_DBUS_H
-
-#include <poll.h>
+#ifndef DBUS_DICT_H
+#define DBUS_DICT_H
 
 #include <dbus/dbus.h>
 
-#include "dhcpcd.h"
+struct o_dbus {
+	const char *var;
+	int type;
+	int sub_type;
+	const char *name;
+};
 
-extern DBusConnection *connection;
-
-DBusHandlerResult _printf(4, 5)
-return_dbus_error(DBusConnection *, DBusMessage *,
-		  const char *name, const char *fmt, ...);
-
-int dhcpcd_dbus_init(void);
-int dhcpcd_dbus_close(void);
-size_t dhcpcd_dbus_add_listeners(struct pollfd *);
-void dhcpcd_dbus_check_listeners(struct pollfd *, size_t);
-void dhcpcd_dbus_configure(const struct dhcpcd_config *);
-void dhcpcd_dbus_signal_status(const char *);
+int dict_append_config_item(DBusMessageIter *,
+			    const struct o_dbus *,
+			    const char *);
 
 #endif

@@ -42,7 +42,8 @@ struct dhcpcd_config {
 };
 extern struct dhcpcd_config *dhcpcd_configs;
 
-int dhcpcd_init(void);
+int set_nonblock(int);
+void dhcpcd_init(void *);
 int dhcpcd_close(void);
 struct dhcpcd_config *dhcpcd_get_config(const char *iface);
 const char *dhcpcd_get_value(const struct dhcpcd_config *, const char *);

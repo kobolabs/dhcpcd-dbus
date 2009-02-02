@@ -24,8 +24,6 @@
  * SUCH DAMAGE.
  */
 
-#include <arpa/inet.h>
-
 #include <poll.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -35,18 +33,15 @@
 #include <dbus/dbus.h>
 
 #include "config.h"
+#include "eloop.h"
+#include "dbus-dict.h"
 #include "dhcpcd-dbus.h"
 #include "dhcpcd.h"
-#include "wpa.h"
+#include "wpa-dbus.h"
 
 #define S_EINVAL	DHCPCD_SERVICE ".InvalidArgument"
 
-static DBusConnection *connection;
-struct watch {
-	DBusWatch *watch;
-	struct watch *next;
-};
-static struct watch *watches;
+DBusConnection *connection;
 
 static const char *introspection_xml =
 	"<!DOCTYPE node PUBLIC \"-//freedesktop//"
@@ -88,7 +83,7 @@ static const char *introspection_xml =
 	"    </method>\n"
 	"    <method name=\"GetScanResults\">\n"
 	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
-	"      <arg name=\"results\" direction=\"out\" type=\"a(suuss)\"/>\n"
+	"      <arg name=\"results\" direction=\"out\" type=\"a(a{sv})\"/>\n"
 	"    </method>\n"
 	"    <signal name=\"Event\">\n"
 	"      <arg name=\"configuration\" type=\"a{sv}\">\n"
@@ -96,17 +91,13 @@ static const char *introspection_xml =
 	"    <signal name=\"StatusChanged\">\n"
 	"      <arg name=\"status\" type=\"s\">\n"
 	"    </signal>\n"
+	"    <signal name=\"ScanResults\">\n"
+	"      <arg name=\"interface\" direction=\"out\" type=\"s\"/>\n"
+	"    </signal>\n"
 	"  </interface>\n"
 	"</node>\n";
 
-struct dho_dbus {
-	const char *var;
-	int type;
-	int sub_type;
-	const char *name;
-};
-
-static const struct dho_dbus const dhos[] = {
+static const struct o_dbus const dhos[] = {
 	{ "interface=", DBUS_TYPE_STRING, 0, "Interface" },
 	{ "reason=", DBUS_TYPE_STRING, 0, "Reason" },
 	{ "wireless=", DBUS_TYPE_BOOLEAN, 0, "Wireless" },
@@ -208,188 +199,11 @@ static const struct dho_dbus const dhos[] = {
 };
 
 static int
-append_config_value(DBusMessageIter *entry, int type,
-		    const char *data)
-{
-	int retval;
-	DBusMessageIter var;
-	unsigned char byte;
-	dbus_uint16_t u16;
-	dbus_uint32_t u32;
-	struct in_addr in;
-
-	retval = -1;
-	switch (type) {
-	case DBUS_TYPE_BOOLEAN:
-		if (*data == '0' || *data == '\0')
-			u32 = 0;
-		else
-			u32 = 1;
-		dbus_message_iter_open_container(entry,
-						 DBUS_TYPE_VARIANT,
-						 DBUS_TYPE_BOOLEAN_AS_STRING,
-						 &var);
-		if (dbus_message_iter_append_basic(&var,
-						   DBUS_TYPE_BOOLEAN,
-						   &u32))
-			retval = 0;
-		break;
-	case DBUS_TYPE_BYTE:
-		byte = strtoul(data, NULL, 0);
-		dbus_message_iter_open_container(entry,
-						 DBUS_TYPE_VARIANT,
-						 DBUS_TYPE_BYTE_AS_STRING,
-						 &var);
-		if (dbus_message_iter_append_basic(&var,
-						   DBUS_TYPE_BYTE,
-						   &byte))
-			retval = 0;
-		break;
-	case DBUS_TYPE_STRING:
-		dbus_message_iter_open_container(entry,
-						 DBUS_TYPE_VARIANT,
-						 DBUS_TYPE_STRING_AS_STRING,
-						 &var);
-		if (dbus_message_iter_append_basic(&var,
-						   DBUS_TYPE_STRING,
-						   &data))
-			retval = 0;
-		break;
-	case DBUS_TYPE_UINT16:
-		u16 = strtoul(data, NULL, 0);
-		dbus_message_iter_open_container(entry,
-						 DBUS_TYPE_VARIANT,
-						 DBUS_TYPE_UINT16_AS_STRING,
-						 &var);
-		if (dbus_message_iter_append_basic(&var,
-						   DBUS_TYPE_UINT16,
-						   &u16))
-			retval = 0;
-		break;
-	case DBUS_TYPE_UINT32:
-		if (strchr(data, '.') != NULL && inet_aton(data, &in) == 1)
-			u32 = in.s_addr;
-		else
-			u32 = strtoul(data, NULL, 0);
-		dbus_message_iter_open_container(entry,
-						 DBUS_TYPE_VARIANT,
-						 DBUS_TYPE_UINT32_AS_STRING,
-						 &var);
-		if (dbus_message_iter_append_basic(&var,
-						   DBUS_TYPE_UINT32,
-						   &u32))
-			retval = 0;
-		break;
-	default:
-		retval = 1;
-		break;
-	}
-	if (retval == 0)
-		dbus_message_iter_close_container(entry, &var);
-	else if (retval == 1)
-		retval = 0;
-
-	return retval;
-}
-
-static int
-append_config_array(DBusMessageIter *entry, int type,
-		    const char *data)
-{
-	int retval;
-	char *ns, *p, *tok;
-	const char *tsa, *ts;
-	DBusMessageIter var, array;
-	dbus_bool_t ok;
-	dbus_uint32_t u32;
-	struct in_addr in;
-
-	switch (type) {
-		case DBUS_TYPE_STRING:
-			tsa = DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_STRING_AS_STRING;
-			ts = DBUS_TYPE_STRING_AS_STRING;
-			break;
-		case DBUS_TYPE_UINT32:
-			tsa = DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_UINT32_AS_STRING;
-			ts = DBUS_TYPE_UINT32_AS_STRING;
-			break;
-		default:
-			return -1;
-	}
-
-	ns = p = strdup(data);
-	if (ns == NULL)
-		return -1;
-	retval = 0;
-
-	dbus_message_iter_open_container(entry,
-					 DBUS_TYPE_VARIANT,
-					 tsa,
-					 &var);
-	dbus_message_iter_open_container(&var,
-					 DBUS_TYPE_ARRAY,
-					 ts,
-					 &array);
-	while ((tok = strsep(&p, " ")) != NULL) {
-		if (*tok == '\0')
-			continue;
-		switch(type) {
-		case DBUS_TYPE_STRING:
-			ok = dbus_message_iter_append_basic(&array,
-							    DBUS_TYPE_STRING,
-							    &tok);
-			break;
-		case DBUS_TYPE_UINT32:
-			if (strchr(data, '.') != NULL &&
-			    inet_aton(data, &in) == 1)
-				u32 = in.s_addr;
-			else
-				u32 = strtoul(tok, NULL, 0);
-			ok = dbus_message_iter_append_basic(&array,
-							    DBUS_TYPE_UINT32,
-							    &u32);
-		default:
-			ok = FALSE;
-			break;
-		}
-		if (!ok)
-			break;
-	}
-	dbus_message_iter_close_container(&var, &array);
-	dbus_message_iter_close_container(entry, &var);
-	free(ns);
-	return retval;
-}
-
-static int
-append_config_item(DBusMessageIter *iter, const struct dho_dbus *dhop,
-		   const char *data)
-{
-	int retval;
-	DBusMessageIter entry;
-
-	retval = 0;
-	if (*data == '\0')
-		return retval;
-	dbus_message_iter_open_container(iter,
-					 DBUS_TYPE_DICT_ENTRY,
-					 NULL,
-					 &entry);
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &dhop->name);
-	if (dhop->type == DBUS_TYPE_ARRAY)
-		retval = append_config_array(&entry, dhop->sub_type, data);
-	else
-		retval = append_config_value(&entry, dhop->type, data);
-	dbus_message_iter_close_container(iter, &entry);
-	return retval;
-}
-
-static int
 append_config(DBusMessageIter *iter,
 		const char *prefix, const struct dhcpcd_config *c)
 {
 	char *p, *e;
-	const struct dho_dbus *dhop;
+	const struct o_dbus *dhop;
 	size_t l, lp;
 	int retval;
 
@@ -401,14 +215,17 @@ append_config(DBusMessageIter *iter,
 		for (dhop = dhos; dhop->var; dhop++) {
 			l = strlen(dhop->var);
 			if (strncmp(p, dhop->var, l) == 0) {
-				retval = append_config_item(iter, dhop, p + l);
+				retval = dict_append_config_item(iter,
+								 dhop,
+								 p + l);
 				break;
 			}
 			if (strncmp(p, prefix, lp) == 0 &&
 			    strncmp(p + lp, dhop->var, l) == 0)
 			{
-				retval = append_config_item(iter, dhop,
-							    p + l + lp);
+				retval = dict_append_config_item(iter,
+								 dhop,
+								 p + l + lp);
 				break;
 			}
 		}
@@ -420,9 +237,9 @@ append_config(DBusMessageIter *iter,
 	return retval;
 }
 
-static DBusHandlerResult _printf(4, 5)
+DBusHandlerResult _printf(4, 5)
 return_dbus_error(DBusConnection *con, DBusMessage *msg,
-	     const char *name, const char *fmt, ...)
+		  const char *name, const char *fmt, ...)
 {
 	char buffer[1024];
 	DBusMessage *reply;
@@ -639,87 +456,6 @@ dhcpcd_iface_command(DBusConnection *con, DBusMessage *msg,
 }
 
 static DBusHandlerResult
-start_scan(DBusConnection *con, DBusMessage *msg)
-{
-	DBusMessage *reply;
-	DBusError err;
-	char *s;
-
-	dbus_error_init(&err);
-	if (!dbus_message_get_args(msg, &err,
-				  DBUS_TYPE_STRING, &s, DBUS_TYPE_INVALID))
-		return return_dbus_error(con, msg, S_EINVAL,
-					 "No interface specified");
-	wpa_open(s);
-	wpa_cmd(s, "SCAN", NULL, 0);
-	wpa_close(s);
-	reply = dbus_message_new_method_return(msg);
-	dbus_connection_send(con, reply, NULL);
-	dbus_message_unref(reply);
-	return DBUS_HANDLER_RESULT_HANDLED;
-}
-
-static DBusHandlerResult
-get_scan_results(DBusConnection *con, DBusMessage *msg)
-{
-	DBusMessage *reply;
-	DBusMessageIter iter, array, entry;
-	DBusError err;
-	char *s, *p, *t;
-	char buffer[2048];
-	dbus_uint32_t u32;
-	int i;
-
-	dbus_error_init(&err);
-	if (!dbus_message_get_args(msg, &err,
-				  DBUS_TYPE_STRING, &s, DBUS_TYPE_INVALID))
-		return return_dbus_error(con, msg, S_EINVAL,
-					 "No interface specified");
-	wpa_open(s);
-	wpa_cmd(s, "SCAN_RESULTS", buffer, sizeof(buffer));
-	wpa_close(s);
-
-	reply = dbus_message_new_method_return(msg);
-	dbus_message_iter_init_append(reply, &iter);
-	dbus_message_iter_open_container(&iter,
-					 DBUS_TYPE_ARRAY,
-					 DBUS_STRUCT_BEGIN_CHAR_AS_STRING
-					 DBUS_TYPE_STRING_AS_STRING
-					 DBUS_TYPE_UINT32_AS_STRING
-					 DBUS_TYPE_UINT32_AS_STRING
-					 DBUS_TYPE_STRING_AS_STRING
-					 DBUS_TYPE_STRING_AS_STRING
-					 DBUS_STRUCT_END_CHAR_AS_STRING,
-					 &array);
-	s = buffer;
-	while ((p = strsep(&s, "\n")) != NULL) {
-		if (p == buffer || *p == '\0')
-			continue;
-		dbus_message_iter_open_container(&array,
-						 DBUS_TYPE_STRUCT,
-						 NULL,
-						 &entry);
-		i = 0;
-		while ((t = strsep(&p, "\t")) != NULL) {
-			i++;
-			if (i == 2 || i == 3) {
-				u32 = strtoul(t, NULL, 0);
-				dbus_message_iter_append_basic(&entry,
-							       DBUS_TYPE_UINT32, &u32);
-			} else
-				dbus_message_iter_append_basic(&entry,
-							       DBUS_TYPE_STRING,
-							       &t);
-		}
-		dbus_message_iter_close_container(&array, &entry);
-	}
-	dbus_message_iter_close_container(&iter, &array);
-	dbus_connection_send(con, reply, NULL);
-	dbus_message_unref(reply);
-	return DBUS_HANDLER_RESULT_HANDLED;
-}
-
-static DBusHandlerResult
 msg_handler(DBusConnection *con, DBusMessage *msg, _unused void *data)
 {
 	if (dbus_message_is_method_call(msg,
@@ -758,105 +494,25 @@ msg_handler(DBusConnection *con, DBusMessage *msg, _unused void *data)
 					     DHCPCD_SERVICE,
 					     "Stop"))
 		return dhcpcd_iface_command(con, msg, "--exit");
-	else if (dbus_message_is_method_call(msg,
-					     DHCPCD_SERVICE,
-					     "StartScan"))
-		return start_scan(con, msg);
-	else if (dbus_message_is_method_call(msg,
-					     DHCPCD_SERVICE,
-					     "GetScanResults"))
-		return get_scan_results(con, msg);
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-}
-
-static dbus_bool_t
-add_watch(DBusWatch *watch, _unused void *data)
-{
-	struct watch *w;
-
-	for (w = watches; w; w = w->next)
-		if (w->watch == watch)
-			return TRUE;
-	w = malloc(sizeof(*w));
-	if (w == NULL)
-		return FALSE;
-	w->watch = watch;
-	w->next = watches;
-	watches = w;
-	return TRUE;
+	return wpa_dbus_handler(con, msg);
 }
 
 static void
-remove_watch(DBusWatch *watch, _unused void *data)
+dbus_event(int revents, void *watch)
 {
-	struct watch *w, *l = NULL;
-
-	for (w = watches; w; w = w->next) {
-		if (w->watch == watch) {
-			if (l == NULL)
-				watches = w->next;
-			else
-				l->next = w->next;
-			free(w);
-			break;
-		}
-	}
-}
-
-size_t
-dhcpcd_dbus_add_listeners(struct pollfd *fds)
-{
-	const struct watch *w;
 	int flags;
-	size_t n;
 
-	n = 0;
-	for (w = watches; w; w = w->next) {
-		if (dbus_watch_get_enabled(w->watch)) {
-			n++;
-			if (fds != NULL) {
-				fds->fd = dbus_watch_get_unix_fd(w->watch);
-				fds->events = POLLHUP | POLLERR;
-				flags = dbus_watch_get_flags(w->watch);
-				if (flags & DBUS_WATCH_READABLE)
-					fds->events |= POLLIN;
-				if (flags & DBUS_WATCH_WRITABLE)
-					fds->events |= POLLOUT;
-				fds++;
-			}
-		}
-	}
-	return n;
-}
-
-void
-dhcpcd_dbus_check_listeners(struct pollfd *fds, size_t nfds)
-{
-	struct watch *w;
-	int fd, flags;
-	size_t i;
-
-	for (w = watches; w; w = w->next) {
-		if (!dbus_watch_get_enabled(w->watch))
-			continue;
-		fd = dbus_watch_get_unix_fd(w->watch);
-		for (i = 0; i < nfds; i++) {
-			if (fds[i].fd == fd) {
-				flags = 0;
-				if (fds[i].revents & POLLIN)
-					flags |= DBUS_WATCH_READABLE;
-				if (fds[i].revents & POLLOUT)
-					flags |= DBUS_WATCH_WRITABLE;
-				if (fds[i].revents & POLLHUP)
-					flags |= DBUS_WATCH_HANGUP;
-				if (fds[i].revents & POLLERR)
-					flags |= DBUS_WATCH_ERROR;
-				if (flags != 0)
-					dbus_watch_handle(w->watch, flags);
-				break;
-			}
-		}
-	}
+	flags = 0;
+	if (revents & POLLIN)
+		flags |= DBUS_WATCH_READABLE;
+	if (revents & POLLOUT)
+		flags |= DBUS_WATCH_WRITABLE;
+	if (revents & POLLHUP)
+		flags |= DBUS_WATCH_HANGUP;
+	if (revents & POLLERR)
+		flags |= DBUS_WATCH_ERROR;
+	if (flags != 0)
+		dbus_watch_handle((DBusWatch *)watch, flags);
 
 	if (connection != NULL) {
 		dbus_connection_ref(connection);
@@ -865,6 +521,32 @@ dhcpcd_dbus_check_listeners(struct pollfd *fds, size_t nfds)
 			;
 		dbus_connection_unref(connection);
 	}
+}
+
+static dbus_bool_t
+add_watch(DBusWatch *watch, _unused void *data)
+{
+	int fd, flags, eflags;
+
+	fd = dbus_watch_get_unix_fd(watch);
+	flags = dbus_watch_get_flags(watch);
+	eflags = POLLHUP | POLLERR;
+	if (flags & DBUS_WATCH_READABLE)
+		eflags |= POLLIN;
+	if (flags & DBUS_WATCH_WRITABLE)
+		eflags |= POLLOUT;
+	if (add_event_flags(fd, eflags, dbus_event, watch) == 0)
+		return TRUE;
+	return FALSE;
+}
+
+static void
+remove_watch(DBusWatch *watch, _unused void *data)
+{
+	int fd;
+
+	fd = dbus_watch_get_unix_fd(watch);
+	delete_event(fd);
 }
 
 int

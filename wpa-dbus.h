@@ -24,26 +24,13 @@
  * SUCH DAMAGE.
  */
 
-#ifndef DHCPCD_DBUS_H
-#define DHCPCD_DBUS_H
-
-#include <poll.h>
+#ifndef WPA_DBUS_H
+#define WPA_DBUS_H
 
 #include <dbus/dbus.h>
 
-#include "dhcpcd.h"
-
-extern DBusConnection *connection;
-
-DBusHandlerResult _printf(4, 5)
-return_dbus_error(DBusConnection *, DBusMessage *,
-		  const char *name, const char *fmt, ...);
-
-int dhcpcd_dbus_init(void);
-int dhcpcd_dbus_close(void);
-size_t dhcpcd_dbus_add_listeners(struct pollfd *);
-void dhcpcd_dbus_check_listeners(struct pollfd *, size_t);
-void dhcpcd_dbus_configure(const struct dhcpcd_config *);
-void dhcpcd_dbus_signal_status(const char *);
+DBusHandlerResult
+wpa_dbus_handler(DBusConnection *con, DBusMessage *msg);
+void wpa_dbus_signal_scan_results(const char *iface);
 
 #endif

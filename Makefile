@@ -3,7 +3,8 @@
 # Copyright 2008 Roy Marples <roy@marples.name>
 
 PROG=		dhcpcd-dbus
-SRCS=		dhcpcd.c dhcpcd-dbus.c wpa.c main.c
+SRCS=		dhcpcd.c dbus-dict.c dhcpcd-dbus.c wpa.c wpa-dbus.c
+SRCS+=		eloop.c main.c
 
 CONFFILES=	dhcpcd-dbus.conf
 FILES=		name.marples.roy.dhcpcd.service
@@ -22,8 +23,13 @@ _DBUSLIBS_SH=	pkg-config --libs dbus-1
 _DBUSLIBS!=	${_DBUSLIBS_SH}
 DBUSLIBS=	${_DBUSLIBS}$(shell ${_DBUSLIBS_SH})
 
+# Linux needs librt
+_LIBRT_SH=	[ "$$(uname -s)" = "Linux" ] && echo "-lrt" || echo ""
+_LIBRT!=	${_LIBRT_SH}
+LIBRT?=		${_LIBRT}$(shell ${_LIBRT_SH})
+
 CFLAGS+=	${DBUSCFLAGS}
-LDADD+=		${DBUSLIBS}
+LDADD+=		${DBUSLIBS} ${LIBRT}
 
 .SUFFIXES: .in
 

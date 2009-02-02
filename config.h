@@ -28,7 +28,7 @@
 #define CONFIG_H
 
 #define PACKAGE			"dhcpcd-dbus"
-#define VERSION			"0.1.3"
+#define VERSION			"0.2.0"
 
 #define DHCPCD_SERVICE "name.marples.roy.dhcpcd"
 #define DHCPCD_PATH    "/name/marples/roy/dhcpcd"
@@ -36,6 +36,8 @@
 #define DHCPCD_SOCKET  "/var/run/dhcpcd.sock"
 
 #define WPA_CTRL_DIR   "/var/run/wpa_supplicant"
+
+#define UNCONST(a)	((void *)(unsigned long)(const void *)(a))
 
 #if defined(__GNUC__)
 # define _printf(a, b)  __attribute__((__format__(__printf__, a, b)))

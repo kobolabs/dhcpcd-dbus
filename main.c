@@ -25,71 +25,50 @@
  */
 
 #include <errno.h>
-#include <poll.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <syslog.h>
 #include <string.h>
 
 #include "config.h"
+#include "eloop.h"
 #include "dhcpcd.h"
 #include "dhcpcd-dbus.h"
 #include "wpa.h"
 
-static struct pollfd *fds;
-static size_t nfds;
-
-#ifdef DEBUG_MEMORY
 static void
 cleanup(void)
 {
-	free(fds);
 	wpa_close(NULL);
 }
-#endif
+
+static void
+handle_signal(int sig)
+{
+	if (sig) {
+		syslog(LOG_INFO, "Got signal %d, exiting", sig);
+		exit(EXIT_SUCCESS);
+	}
+}
 
 int
 main(void)
 {
-	size_t n, dhcpcd_n;
-	int i, t;
-
 	openlog(PACKAGE, LOG_PERROR, LOG_DAEMON);
 	setlogmask(LOG_UPTO(LOG_INFO));
 	syslog(LOG_INFO, "starting " PACKAGE "-" VERSION);
 
-#ifdef DEBUG_MEMORY
 	atexit(cleanup);
-#endif
+	signal(SIGINT, handle_signal);
+	signal(SIGTERM, handle_signal);
+
+	/* Ignore pipes */
+	signal(SIGPIPE, SIG_IGN);
 
 	if (dhcpcd_dbus_init() == -1)
 		exit(EXIT_FAILURE);
 
-	for (;;) {
-		dhcpcd_n = dhcpcd_add_listeners(NULL);
-		if (dhcpcd_n == 0) {
-			dhcpcd_init();
-			dhcpcd_n = dhcpcd_add_listeners(NULL);
-			/* Attempt another dhcpcd connection */
-			t = 1000;
-		} else
-			t = -1;
-		n = dhcpcd_n;
-		n += dhcpcd_dbus_add_listeners(NULL);
-		if (n > nfds) {
-			nfds = n;
-			fds = malloc(sizeof(*fds) * nfds);
-			if (fds == NULL) {
-				syslog(LOG_ERR, "malloc: %m");
-				exit(EXIT_FAILURE);
-			}
-		}
-		n = dhcpcd_add_listeners(fds);
-		n += dhcpcd_dbus_add_listeners(fds + n);
-		i = poll(fds, n, t);
-		if (i == 0)
-			continue;
-		dhcpcd_check_listeners(fds, n);
-		dhcpcd_dbus_check_listeners(fds, n);
-	}
+	add_timeout_sec(1, dhcpcd_init, NULL);
+	start_eloop();
 	exit(EXIT_SUCCESS);
 }
