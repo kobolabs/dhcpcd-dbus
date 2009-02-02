@@ -67,8 +67,7 @@ main(void)
 
 	if (dhcpcd_dbus_init() == -1)
 		exit(EXIT_FAILURE);
-
-	add_timeout_sec(1, dhcpcd_init, NULL);
+	dhcpcd_init(NULL);
 	start_eloop();
 	exit(EXIT_SUCCESS);
 }
