@@ -93,7 +93,7 @@ attach_scan_results(const char *iface, DBusMessageIter *iter)
 					 &array);
 	retval = 0;
 	for (i = 0; i < 1000; i++) {
-		snprintf(cmd, sizeof(cmd), "BSS %d", i);
+		snprintf(cmd, sizeof(cmd), "BSS %zd", i);
 		bytes = wpa_cmd(iface, cmd, buffer, sizeof(buffer));
 		if (bytes == -1 || bytes == 0 || strncmp(buffer, "FAIL", 4) == 0)
 			break;
