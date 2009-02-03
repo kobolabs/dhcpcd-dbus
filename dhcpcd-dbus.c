@@ -43,17 +43,7 @@
 
 DBusConnection *connection;
 
-static const char *introspection_xml =
-	"<!DOCTYPE node PUBLIC \"-//freedesktop//"
-	"DTD D-BUS Object Introspection 1.0//EN\"\n"
-	"http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd\";>\n"
-	"<node name=\"" DHCPCD_PATH "\">\n"
-	"  <interface name=\"org.freedesktop.DBus.Introspectable\">\n"
-	"    <method name=\"Introspect\">\n"
-	"      <arg name=\"data\" direction=\"out\" type=\"s\"/>\n"
-	"    </method>\n"
-	"  </interface>\n"
-	"  <interface name=\"" DHCPCD_SERVICE "\">\n"
+static const char *dhcpcd_introspection_xml =
 	"    <method name=\"GetVersion\">\n"
 	"      <arg name=\"version\" direction=\"out\" type=\"s\"/>\n"
 	"    </method>\n"
@@ -78,24 +68,12 @@ static const char *introspection_xml =
 	"    <method name=\"Stop\">\n"
 	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
 	"    </method>\n"
-	"    <method name=\"StartScan\">\n"
-	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
-	"    </method>\n"
-	"    <method name=\"GetScanResults\">\n"
-	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
-	"      <arg name=\"results\" direction=\"out\" type=\"a(a{sv})\"/>\n"
-	"    </method>\n"
 	"    <signal name=\"Event\">\n"
 	"      <arg name=\"configuration\" type=\"a{sv}\">\n"
 	"    </signal>\n"
 	"    <signal name=\"StatusChanged\">\n"
 	"      <arg name=\"status\" type=\"s\">\n"
-	"    </signal>\n"
-	"    <signal name=\"ScanResults\">\n"
-	"      <arg name=\"interface\" direction=\"out\" type=\"s\"/>\n"
-	"    </signal>\n"
-	"  </interface>\n"
-	"</node>\n";
+	"    </signal>\n";
 
 static const struct o_dbus const dhos[] = {
 	{ "interface=", DBUS_TYPE_STRING, 0, "Interface" },
@@ -328,18 +306,49 @@ dhcpcd_dbus_configure(const struct dhcpcd_config *c)
 	dbus_message_unref(msg);
 }
 
+static const char *introspection_header_xml =
+	"<!DOCTYPE node PUBLIC \"-//freedesktop//"
+	"DTD D-BUS Object Introspection 1.0//EN\"\n"
+	"http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd\";>\n"
+	"<node name=\"" DHCPCD_PATH "\">\n"
+	"  <interface name=\"org.freedesktop.DBus.Introspectable\">\n"
+	"    <method name=\"Introspect\">\n"
+	"      <arg name=\"data\" direction=\"out\" type=\"s\"/>\n"
+	"    </method>\n"
+	"  </interface>\n"
+	"  <interface name=\"" DHCPCD_SERVICE "\">\n";
+
+static const char *introspection_footer_xml =
+	"  </interface>\n"
+	"</node>\n";
+
 static DBusHandlerResult
 introspect(DBusConnection *con, DBusMessage *msg)
 {
 	DBusMessage *reply;
+	char *xml;
+	size_t len;
 
+	len = strlen(introspection_header_xml) +
+		strlen(dhcpcd_introspection_xml) +
+		strlen(wpa_introspection_xml) +
+		strlen(introspection_footer_xml) + 1;
+	xml = malloc(len);
+	if (xml == NULL)
+		return DBUS_HANDLER_RESULT_HANDLED;
+	snprintf(xml, sizeof(xml), "%s%s%s%s",
+		 introspection_header_xml,
+		 dhcpcd_introspection_xml,
+		 wpa_introspection_xml,
+		 introspection_footer_xml);
 	reply = dbus_message_new_method_return(msg);
 	dbus_message_append_args(reply,
 				 DBUS_TYPE_STRING,
-				 &introspection_xml,
+				 &xml,
 				 DBUS_TYPE_INVALID);
 	dbus_connection_send(con, reply, NULL);
 	dbus_message_unref(reply);
+	free(xml);
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 

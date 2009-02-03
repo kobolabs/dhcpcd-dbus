@@ -29,6 +29,8 @@
 
 #include <dbus/dbus.h>
 
+extern const char *wpa_introspection_xml;
+
 DBusHandlerResult
 wpa_dbus_handler(DBusConnection *con, DBusMessage *msg);
 void wpa_dbus_signal_scan_results(const char *iface);

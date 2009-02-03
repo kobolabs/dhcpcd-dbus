@@ -39,6 +39,51 @@
 #include "wpa-dbus.h"
 
 #define S_EINVAL	DHCPCD_SERVICE ".InvalidArgument"
+#define S_WPA		DHCPCD_SERVICE ".WPASupplicantError"
+
+const char *wpa_introspection_xml =
+	"    <method name=\"StartScan\">\n"
+	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
+	"    </method>\n"
+	"    <method name=\"GetScanResults\">\n"
+	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
+	"      <arg name=\"results\" direction=\"out\" type=\"a(a{sv})\"/>\n"
+	"    </method>\n"
+	"    <method name=\"GetNetworks\">\n"
+	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
+	"      <arg name=\"ids\" direction=\"out\" type=\"aa(usss)\"/>\n"
+	"    </method>\n"
+	"    <method name=\"AddNetwork\">\n"
+	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
+	"      <arg name=\"id\" direction=\"out\" type=\"u\"/>\n"
+	"    </method>\n"
+	"    <method name=\"RemoveNetwork\">\n"
+	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
+	"      <arg name=\"id\" direction=\"in\" type=\"u\"/>\n"
+	"    </method>\n"
+	"    <method name=\"EnableNetwork\">\n"
+	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
+	"      <arg name=\"id\" direction=\"in\" type=\"u\"/>\n"
+	"    </method>\n"
+	"    <method name=\"DisableNetwork\">\n"
+	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
+	"      <arg name=\"id\" direction=\"in\" type=\"u\"/>\n"
+	"    </method>\n"
+	"    <method name=\"SetNetworkParameter\">\n"
+	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
+	"      <arg name=\"id\" direction=\"in\" type=\"u\"/>\n"
+	"      <arg name=\"parameter\" direction=\"in\" type=\"s\"/>\n"
+	"      <arg name=\"value\" direction=\"out\" type=\"s\"/>\n"
+	"    </method>\n"
+	"    <method name=\"SetNetworkParameter\">\n"
+	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
+	"      <arg name=\"id\" direction=\"in\" type=\"u\"/>\n"
+	"      <arg name=\"parameter\" direction=\"in\" type=\"s\"/>\n"
+	"      <arg name=\"value\" direction=\"in\" type=\"s\"/>\n"
+	"    </method>\n"
+	"    <signal name=\"ScanResults\">\n"
+	"      <arg name=\"interface\" direction=\"out\" type=\"s\"/>\n"
+	"    </signal>\n";
 
 static const struct o_dbus const wpaos[] = {
 	{ "bssid=", DBUS_TYPE_STRING, 0, "BSSID" },
@@ -171,6 +216,237 @@ get_scan_results(DBusConnection *con, DBusMessage *msg)
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
+static DBusHandlerResult
+get_networks(DBusConnection *con, DBusMessage *msg)
+{
+	DBusMessage *reply;
+	DBusMessageIter args, array, network, item;
+	DBusError err;
+	char *s, buffer[2048], *t, *ssid, *bssid, *flags;
+	ssize_t bytes;
+	unsigned int id;
+
+	dbus_error_init(&err);
+	if (!dbus_message_get_args(msg, &err,
+				  DBUS_TYPE_STRING, &s, DBUS_TYPE_INVALID))
+		return return_dbus_error(con, msg, S_EINVAL,
+					 "No interface specified");
+	reply = dbus_message_new_method_return(msg);
+	dbus_message_iter_init_append(reply, &args);
+	dbus_message_iter_open_container(&args,
+					 DBUS_TYPE_ARRAY,
+					 DBUS_TYPE_ARRAY_AS_STRING
+					 DBUS_STRUCT_BEGIN_CHAR_AS_STRING
+					 DBUS_TYPE_UINT32_AS_STRING
+					 DBUS_TYPE_STRING_AS_STRING
+					 DBUS_TYPE_STRING_AS_STRING
+					 DBUS_TYPE_STRING_AS_STRING
+					 DBUS_STRUCT_END_CHAR_AS_STRING,
+					 &array);
+	dbus_message_iter_open_container(&array,
+					 DBUS_TYPE_ARRAY,
+					 DBUS_STRUCT_BEGIN_CHAR_AS_STRING
+					 DBUS_TYPE_UINT32_AS_STRING
+					 DBUS_TYPE_STRING_AS_STRING
+					 DBUS_TYPE_STRING_AS_STRING
+					 DBUS_TYPE_STRING_AS_STRING
+					 DBUS_STRUCT_END_CHAR_AS_STRING,
+					 &network);
+	bytes = wpa_cmd(s, "LIST_NETWORKS", buffer, sizeof(buffer));
+	s = strchr(buffer, '\n');
+	if (s != NULL) {
+		while ((t = strsep(&s, "\n")) != NULL) {
+			if (*t == '\0')
+				continue;
+			ssid = strchr(t, '\t');
+			if (ssid == NULL)
+				break;
+			*ssid++ = '\0';
+			bssid = strchr(ssid, '\t');
+			if (bssid == NULL)
+				break;
+			*bssid++ = '\0';
+			flags = strchr(bssid, '\t');
+			if (flags == NULL)
+				break;
+			*flags++ = '\0';
+			id = strtoul(t, NULL, 0);
+			dbus_message_iter_open_container(&network,
+							 DBUS_TYPE_STRUCT,
+							 NULL,
+							 &item);
+			dbus_message_iter_append_basic(&item,
+						       DBUS_TYPE_UINT32,
+						       &id);
+			dbus_message_iter_append_basic(&item,
+						       DBUS_TYPE_STRING,
+						       &ssid);
+			dbus_message_iter_append_basic(&item,
+						       DBUS_TYPE_STRING,
+						       &bssid);
+			dbus_message_iter_append_basic(&item,
+						       DBUS_TYPE_STRING,
+						       &flags);
+			dbus_message_iter_close_container(&network, &item);
+		}
+	}
+	dbus_message_iter_close_container(&array, &network);
+	dbus_message_iter_close_container(&args, &array);
+
+	dbus_connection_send(con, reply, NULL);
+	dbus_message_unref(reply);
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
+static DBusHandlerResult
+add_network(DBusConnection *con, DBusMessage *msg)
+{
+	DBusMessage *reply;
+	DBusMessageIter args;
+	DBusError err;
+	char *s, buffer[2048];
+	ssize_t bytes;
+	unsigned int id;
+
+	dbus_error_init(&err);
+	if (!dbus_message_get_args(msg, &err,
+				  DBUS_TYPE_STRING, &s, DBUS_TYPE_INVALID))
+		return return_dbus_error(con, msg, S_EINVAL,
+					 "No interface specified");
+
+	bytes = wpa_cmd(s, "ADD_NETWORK", buffer, sizeof(buffer));
+	if (bytes == -1 || bytes == 0)
+		return return_dbus_error(con, msg, S_WPA,
+					 "Failed too add a new network");
+	reply = dbus_message_new_method_return(msg);
+	id = strtoul(buffer, NULL, 0);
+	dbus_message_iter_init_append(reply, &args);
+	dbus_message_iter_append_basic(&args,
+				       DBUS_TYPE_UINT32,
+				       &id);
+	dbus_connection_send(con, reply, NULL);
+	dbus_message_unref(reply);
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
+static DBusHandlerResult
+_network(DBusConnection *con, DBusMessage *msg, const char *c, const char *e)
+{
+	DBusMessage *reply;
+	DBusError err;
+	char cmd[32], *s, buffer[2048];
+	ssize_t bytes;
+	unsigned int id;
+
+	dbus_error_init(&err);
+	if (!dbus_message_get_args(msg, &err,
+				  DBUS_TYPE_STRING, &s, 
+				  DBUS_TYPE_UINT32, &id,
+				  DBUS_TYPE_INVALID))
+		return return_dbus_error(con, msg, S_EINVAL,
+					 "No interface or id specified");
+
+	snprintf(cmd, sizeof(cmd), "%s %u", c, id);
+	bytes = wpa_cmd(s, cmd, buffer, sizeof(buffer));
+	if (bytes == -1 || strcmp(buffer, "OK\n") != 0)
+		return return_dbus_error(con, msg, S_WPA, "%s", e);
+	reply = dbus_message_new_method_return(msg);
+	dbus_connection_send(con, reply, NULL);
+	dbus_message_unref(reply);
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
+static DBusHandlerResult
+remove_network(DBusConnection *con, DBusMessage *msg)
+{
+	return _network(con, msg,
+			"REMOVE_NETWORK",
+			"Failed to remove the network");
+}
+
+static DBusHandlerResult
+enable_network(DBusConnection *con, DBusMessage *msg)
+{
+	return _network(con, msg,
+			"ENABLE_NETWORK",
+			"Failed to enable the network");
+}
+
+static DBusHandlerResult
+disable_network(DBusConnection *con, DBusMessage *msg)
+{
+	return _network(con, msg,
+			"DISABLE_NETWORK",
+			"Failed to enable the network");
+}
+
+static DBusHandlerResult
+get_parameter(DBusConnection *con, DBusMessage *msg)
+{
+	DBusMessage *reply;
+	DBusMessageIter args;
+	DBusError err;
+	char cmd[256], *s, *param, buffer[2048];
+	ssize_t bytes;
+	unsigned int id;
+
+	dbus_error_init(&err);
+	if (!dbus_message_get_args(msg, &err,
+				  DBUS_TYPE_STRING, &s, 
+				  DBUS_TYPE_UINT32, &id,
+				  DBUS_TYPE_STRING, &param,
+				  DBUS_TYPE_INVALID))
+		return return_dbus_error(con, msg, S_EINVAL,
+					 "No interface, id or parameter"
+					 " specified");
+
+	snprintf(cmd, sizeof(cmd), "GET_NETWORK %u %s", id, param);
+	bytes = wpa_cmd(s, cmd, buffer, sizeof(buffer));
+	if (bytes == -1 || bytes == 0 || strcmp(buffer, "FAIL\n") == 0)
+		return return_dbus_error(con, msg, S_WPA,
+					 "Failed to get network parameter");
+	reply = dbus_message_new_method_return(msg);
+	s = buffer;
+	dbus_message_iter_init_append(reply, &args);
+	dbus_message_iter_append_basic(&args,
+				       DBUS_TYPE_STRING,
+				       &s);
+	dbus_connection_send(con, reply, NULL);
+	dbus_message_unref(reply);
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
+static DBusHandlerResult
+set_parameter(DBusConnection *con, DBusMessage *msg)
+{
+	DBusMessage *reply;
+	DBusError err;
+	char cmd[256], *s, *param, *value, buffer[2048];
+	ssize_t bytes;
+	unsigned int id;
+
+	dbus_error_init(&err);
+	if (!dbus_message_get_args(msg, &err,
+				  DBUS_TYPE_STRING, &s, 
+				  DBUS_TYPE_UINT32, &id,
+				  DBUS_TYPE_STRING, &param,
+				  DBUS_TYPE_STRING, &value,
+				  DBUS_TYPE_INVALID))
+		return return_dbus_error(con, msg, S_EINVAL,
+					 "No interface, id, parameter or"
+					 " value specified");
+
+	snprintf(cmd, sizeof(cmd), "SET_NETWORK %u %s %s", id, param, value);
+	bytes = wpa_cmd(s, cmd, buffer, sizeof(buffer));
+	if (bytes == -1 || strcmp(buffer, "OK\n") != 0)
+		return return_dbus_error(con, msg, S_WPA,
+					 "Failed to set network parameter");
+	reply = dbus_message_new_method_return(msg);
+	dbus_connection_send(con, reply, NULL);
+	dbus_message_unref(reply);
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
 DBusHandlerResult
 wpa_dbus_handler(DBusConnection *con, DBusMessage *msg)
 {
@@ -182,5 +458,33 @@ wpa_dbus_handler(DBusConnection *con, DBusMessage *msg)
 					     DHCPCD_SERVICE,
 					     "GetScanResults"))
 		return get_scan_results(con, msg);
+	else if (dbus_message_is_method_call(msg,
+					     DHCPCD_SERVICE,
+					     "GetNetworks"))
+		return get_networks(con, msg);
+	else if (dbus_message_is_method_call(msg,
+					     DHCPCD_SERVICE,
+					     "AddNetwork"))
+		return add_network(con, msg);
+	else if (dbus_message_is_method_call(msg,
+					     DHCPCD_SERVICE,
+					     "RemoveNetwork"))
+		return remove_network(con, msg);
+	else if (dbus_message_is_method_call(msg,
+					     DHCPCD_SERVICE,
+					     "EnableNetwork"))
+		return enable_network(con, msg);
+	else if (dbus_message_is_method_call(msg,
+					     DHCPCD_SERVICE,
+					     "DisableNetwork"))
+		return disable_network(con, msg);
+	else if (dbus_message_is_method_call(msg,
+					     DHCPCD_SERVICE,
+					     "GetNetworkParameter"))
+		return get_parameter(con, msg);
+	else if (dbus_message_is_method_call(msg,
+					     DHCPCD_SERVICE,
+					     "SetNetworkParameter"))
+		return set_parameter(con, msg);
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
