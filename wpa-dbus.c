@@ -51,33 +51,33 @@ const char *wpa_introspection_xml =
 	"    </method>\n"
 	"    <method name=\"GetNetworks\">\n"
 	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
-	"      <arg name=\"ids\" direction=\"out\" type=\"aa(usss)\"/>\n"
+	"      <arg name=\"ids\" direction=\"out\" type=\"aa(isss)\"/>\n"
 	"    </method>\n"
 	"    <method name=\"AddNetwork\">\n"
 	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
-	"      <arg name=\"id\" direction=\"out\" type=\"u\"/>\n"
+	"      <arg name=\"id\" direction=\"out\" type=\"i\"/>\n"
 	"    </method>\n"
 	"    <method name=\"RemoveNetwork\">\n"
 	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
-	"      <arg name=\"id\" direction=\"in\" type=\"u\"/>\n"
+	"      <arg name=\"id\" direction=\"in\" type=\"i\"/>\n"
 	"    </method>\n"
 	"    <method name=\"EnableNetwork\">\n"
 	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
-	"      <arg name=\"id\" direction=\"in\" type=\"u\"/>\n"
+	"      <arg name=\"id\" direction=\"in\" type=\"i\"/>\n"
 	"    </method>\n"
 	"    <method name=\"DisableNetwork\">\n"
 	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
-	"      <arg name=\"id\" direction=\"in\" type=\"u\"/>\n"
+	"      <arg name=\"id\" direction=\"in\" type=\"i\"/>\n"
 	"    </method>\n"
 	"    <method name=\"SetNetworkParameter\">\n"
 	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
-	"      <arg name=\"id\" direction=\"in\" type=\"u\"/>\n"
+	"      <arg name=\"id\" direction=\"in\" type=\"i\"/>\n"
 	"      <arg name=\"parameter\" direction=\"in\" type=\"s\"/>\n"
 	"      <arg name=\"value\" direction=\"out\" type=\"s\"/>\n"
 	"    </method>\n"
 	"    <method name=\"SetNetworkParameter\">\n"
 	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
-	"      <arg name=\"id\" direction=\"in\" type=\"u\"/>\n"
+	"      <arg name=\"id\" direction=\"in\" type=\"i\"/>\n"
 	"      <arg name=\"parameter\" direction=\"in\" type=\"s\"/>\n"
 	"      <arg name=\"value\" direction=\"in\" type=\"s\"/>\n"
 	"    </method>\n"
@@ -224,7 +224,7 @@ get_networks(DBusConnection *con, DBusMessage *msg)
 	DBusError err;
 	char *s, buffer[2048], *t, *ssid, *bssid, *flags;
 	ssize_t bytes;
-	unsigned int id;
+	int id;
 
 	dbus_error_init(&err);
 	if (!dbus_message_get_args(msg, &err,
@@ -237,7 +237,7 @@ get_networks(DBusConnection *con, DBusMessage *msg)
 					 DBUS_TYPE_ARRAY,
 					 DBUS_TYPE_ARRAY_AS_STRING
 					 DBUS_STRUCT_BEGIN_CHAR_AS_STRING
-					 DBUS_TYPE_UINT32_AS_STRING
+					 DBUS_TYPE_INT32_AS_STRING
 					 DBUS_TYPE_STRING_AS_STRING
 					 DBUS_TYPE_STRING_AS_STRING
 					 DBUS_TYPE_STRING_AS_STRING
@@ -246,7 +246,7 @@ get_networks(DBusConnection *con, DBusMessage *msg)
 	dbus_message_iter_open_container(&array,
 					 DBUS_TYPE_ARRAY,
 					 DBUS_STRUCT_BEGIN_CHAR_AS_STRING
-					 DBUS_TYPE_UINT32_AS_STRING
+					 DBUS_TYPE_INT32_AS_STRING
 					 DBUS_TYPE_STRING_AS_STRING
 					 DBUS_TYPE_STRING_AS_STRING
 					 DBUS_TYPE_STRING_AS_STRING
@@ -276,7 +276,7 @@ get_networks(DBusConnection *con, DBusMessage *msg)
 							 NULL,
 							 &item);
 			dbus_message_iter_append_basic(&item,
-						       DBUS_TYPE_UINT32,
+						       DBUS_TYPE_INT32,
 						       &id);
 			dbus_message_iter_append_basic(&item,
 						       DBUS_TYPE_STRING,
@@ -306,7 +306,7 @@ add_network(DBusConnection *con, DBusMessage *msg)
 	DBusError err;
 	char *s, buffer[2048];
 	ssize_t bytes;
-	unsigned int id;
+	int id;
 
 	dbus_error_init(&err);
 	if (!dbus_message_get_args(msg, &err,
@@ -319,10 +319,10 @@ add_network(DBusConnection *con, DBusMessage *msg)
 		return return_dbus_error(con, msg, S_WPA,
 					 "Failed too add a new network");
 	reply = dbus_message_new_method_return(msg);
-	id = strtoul(buffer, NULL, 0);
+	id = strtol(buffer, NULL, 0);
 	dbus_message_iter_init_append(reply, &args);
 	dbus_message_iter_append_basic(&args,
-				       DBUS_TYPE_UINT32,
+				       DBUS_TYPE_INT32,
 				       &id);
 	dbus_connection_send(con, reply, NULL);
 	dbus_message_unref(reply);
@@ -336,17 +336,17 @@ _network(DBusConnection *con, DBusMessage *msg, const char *c, const char *e)
 	DBusError err;
 	char cmd[32], *s, buffer[2048];
 	ssize_t bytes;
-	unsigned int id;
+	int id;
 
 	dbus_error_init(&err);
 	if (!dbus_message_get_args(msg, &err,
 				  DBUS_TYPE_STRING, &s, 
-				  DBUS_TYPE_UINT32, &id,
+				  DBUS_TYPE_INT32, &id,
 				  DBUS_TYPE_INVALID))
 		return return_dbus_error(con, msg, S_EINVAL,
 					 "No interface or id specified");
 
-	snprintf(cmd, sizeof(cmd), "%s %u", c, id);
+	snprintf(cmd, sizeof(cmd), "%s %d", c, id);
 	bytes = wpa_cmd(s, cmd, buffer, sizeof(buffer));
 	if (bytes == -1 || strcmp(buffer, "OK\n") != 0)
 		return return_dbus_error(con, msg, S_WPA, "%s", e);
@@ -388,19 +388,19 @@ get_parameter(DBusConnection *con, DBusMessage *msg)
 	DBusError err;
 	char cmd[256], *s, *param, buffer[2048];
 	ssize_t bytes;
-	unsigned int id;
+	int id;
 
 	dbus_error_init(&err);
 	if (!dbus_message_get_args(msg, &err,
 				  DBUS_TYPE_STRING, &s, 
-				  DBUS_TYPE_UINT32, &id,
+				  DBUS_TYPE_INT32, &id,
 				  DBUS_TYPE_STRING, &param,
 				  DBUS_TYPE_INVALID))
 		return return_dbus_error(con, msg, S_EINVAL,
 					 "No interface, id or parameter"
 					 " specified");
 
-	snprintf(cmd, sizeof(cmd), "GET_NETWORK %u %s", id, param);
+	snprintf(cmd, sizeof(cmd), "GET_NETWORK %d %s", id, param);
 	bytes = wpa_cmd(s, cmd, buffer, sizeof(buffer));
 	if (bytes == -1 || bytes == 0 || strcmp(buffer, "FAIL\n") == 0)
 		return return_dbus_error(con, msg, S_WPA,
@@ -423,12 +423,12 @@ set_parameter(DBusConnection *con, DBusMessage *msg)
 	DBusError err;
 	char cmd[256], *s, *param, *value, buffer[2048];
 	ssize_t bytes;
-	unsigned int id;
+	int id;
 
 	dbus_error_init(&err);
 	if (!dbus_message_get_args(msg, &err,
 				  DBUS_TYPE_STRING, &s, 
-				  DBUS_TYPE_UINT32, &id,
+				  DBUS_TYPE_INT32, &id,
 				  DBUS_TYPE_STRING, &param,
 				  DBUS_TYPE_STRING, &value,
 				  DBUS_TYPE_INVALID))
@@ -436,7 +436,7 @@ set_parameter(DBusConnection *con, DBusMessage *msg)
 					 "No interface, id, parameter or"
 					 " value specified");
 
-	snprintf(cmd, sizeof(cmd), "SET_NETWORK %u %s %s", id, param, value);
+	snprintf(cmd, sizeof(cmd), "SET_NETWORK %d %s %s", id, param, value);
 	bytes = wpa_cmd(s, cmd, buffer, sizeof(buffer));
 	if (bytes == -1 || strcmp(buffer, "OK\n") != 0)
 		return return_dbus_error(con, msg, S_WPA,
