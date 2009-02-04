@@ -42,14 +42,14 @@
 #define S_WPA		DHCPCD_SERVICE ".WPASupplicantError"
 
 const char *wpa_introspection_xml =
-	"    <method name=\"StartScan\">\n"
+	"    <method name=\"Scan\">\n"
 	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
 	"    </method>\n"
-	"    <method name=\"GetScanResults\">\n"
+	"    <method name=\"ScanResults\">\n"
 	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
 	"      <arg name=\"results\" direction=\"out\" type=\"a(a{sv})\"/>\n"
 	"    </method>\n"
-	"    <method name=\"GetNetworks\">\n"
+	"    <method name=\"ListNetworks\">\n"
 	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
 	"      <arg name=\"ids\" direction=\"out\" type=\"aa(isss)\"/>\n"
 	"    </method>\n"
@@ -85,6 +85,9 @@ const char *wpa_introspection_xml =
 	"      <arg name=\"parameter\" direction=\"in\" type=\"s\"/>\n"
 	"      <arg name=\"value\" direction=\"in\" type=\"s\"/>\n"
 	"    </method>\n"
+	"    <method name=\"SaveConfig\">\n"
+	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
+	"    </method>\n"
 	"    <signal name=\"ScanResults\">\n"
 	"      <arg name=\"interface\" direction=\"out\" type=\"s\"/>\n"
 	"    </signal>\n";
@@ -103,25 +106,6 @@ static const struct o_dbus const wpaos[] = {
 	{ "ssid=", DBUS_TYPE_STRING, 0, "SSID" },
 	{ NULL, 0, 0, NULL}
 };
-
-static DBusHandlerResult
-start_scan(DBusConnection *con, DBusMessage *msg)
-{
-	DBusMessage *reply;
-	DBusError err;
-	char *s;
-
-	dbus_error_init(&err);
-	if (!dbus_message_get_args(msg, &err,
-				  DBUS_TYPE_STRING, &s, DBUS_TYPE_INVALID))
-		return return_dbus_error(con, msg, S_EINVAL,
-					 "No interface specified");
-	wpa_cmd(s, "SCAN", NULL, 0);
-	reply = dbus_message_new_method_return(msg);
-	dbus_connection_send(con, reply, NULL);
-	dbus_message_unref(reply);
-	return DBUS_HANDLER_RESULT_HANDLED;
-}
 
 static int
 attach_scan_results(const char *iface, DBusMessageIter *iter)
@@ -199,7 +183,7 @@ wpa_dbus_signal_scan_results(const char *iface)
 }
 
 static DBusHandlerResult
-get_scan_results(DBusConnection *con, DBusMessage *msg)
+scan_results(DBusConnection *con, DBusMessage *msg)
 {
 	DBusMessage *reply;
 	DBusMessageIter args;
@@ -221,7 +205,7 @@ get_scan_results(DBusConnection *con, DBusMessage *msg)
 }
 
 static DBusHandlerResult
-get_networks(DBusConnection *con, DBusMessage *msg)
+list_networks(DBusConnection *con, DBusMessage *msg)
 {
 	DBusMessage *reply;
 	DBusMessageIter args, array, item;
@@ -323,6 +307,30 @@ add_network(DBusConnection *con, DBusMessage *msg)
 }
 
 static DBusHandlerResult
+_cmd(DBusConnection *con, DBusMessage *msg, const char *c, const char *e)
+{
+	DBusMessage *reply;
+	DBusError err;
+	char *s, buffer[2048];
+	ssize_t bytes;
+
+	dbus_error_init(&err);
+	if (!dbus_message_get_args(msg, &err,
+				  DBUS_TYPE_STRING, &s, 
+				  DBUS_TYPE_INVALID))
+		return return_dbus_error(con, msg, S_EINVAL,
+					 "No interface specified");
+
+	bytes = wpa_cmd(s, c, buffer, sizeof(buffer));
+	if (bytes == -1 || strcmp(buffer, "OK\n") != 0)
+		return return_dbus_error(con, msg, S_WPA, "%s", e);
+	reply = dbus_message_new_method_return(msg);
+	dbus_connection_send(con, reply, NULL);
+	dbus_message_unref(reply);
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
+static DBusHandlerResult
 _network(DBusConnection *con, DBusMessage *msg, const char *c, const char *e)
 {
 	DBusMessage *reply;
@@ -347,6 +355,14 @@ _network(DBusConnection *con, DBusMessage *msg, const char *c, const char *e)
 	dbus_connection_send(con, reply, NULL);
 	dbus_message_unref(reply);
 	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
+static DBusHandlerResult
+scan(DBusConnection *con, DBusMessage *msg)
+{
+	return _cmd(con, msg,
+		    "SCAN",
+		    "Failed to save configuration");
 }
 
 static DBusHandlerResult
@@ -380,6 +396,15 @@ select_network(DBusConnection *con, DBusMessage *msg)
 			"SELECT_NETWORK",
 			"Failed to select the network");
 }
+
+static DBusHandlerResult
+save_config(DBusConnection *con, DBusMessage *msg)
+{
+	return _cmd(con, msg,
+		    "SAVE_CONFIG",
+		    "Failed to save configuration");
+}
+
 static DBusHandlerResult
 get_network(DBusConnection *con, DBusMessage *msg)
 {
@@ -452,16 +477,16 @@ wpa_dbus_handler(DBusConnection *con, DBusMessage *msg)
 {
 	if (dbus_message_is_method_call(msg,
 					     DHCPCD_SERVICE,
-					     "StartScan"))
-		return start_scan(con, msg);
+					     "Scan"))
+		return scan(con, msg);
 	else if (dbus_message_is_method_call(msg,
 					     DHCPCD_SERVICE,
-					     "GetScanResults"))
-		return get_scan_results(con, msg);
+					     "ScanResults"))
+		return scan_results(con, msg);
 	else if (dbus_message_is_method_call(msg,
 					     DHCPCD_SERVICE,
-					     "GetNetworks"))
-		return get_networks(con, msg);
+					     "ListNetworks"))
+		return list_networks(con, msg);
 	else if (dbus_message_is_method_call(msg,
 					     DHCPCD_SERVICE,
 					     "AddNetwork"))
@@ -490,5 +515,9 @@ wpa_dbus_handler(DBusConnection *con, DBusMessage *msg)
 					     DHCPCD_SERVICE,
 					     "SetNetwork"))
 		return set_network(con, msg);
+	else if (dbus_message_is_method_call(msg,
+					     DHCPCD_SERVICE,
+					     "SaveConfig"))
+		return save_config(con, msg);
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
