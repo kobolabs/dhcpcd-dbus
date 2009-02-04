@@ -69,6 +69,10 @@ const char *wpa_introspection_xml =
 	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
 	"      <arg name=\"id\" direction=\"in\" type=\"i\"/>\n"
 	"    </method>\n"
+	"    <method name=\"SelectNetwork\">\n"
+	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
+	"      <arg name=\"id\" direction=\"in\" type=\"i\"/>\n"
+	"    </method>\n"
 	"    <method name=\"SetNetworkParameter\">\n"
 	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
 	"      <arg name=\"id\" direction=\"in\" type=\"i\"/>\n"
@@ -220,7 +224,7 @@ static DBusHandlerResult
 get_networks(DBusConnection *con, DBusMessage *msg)
 {
 	DBusMessage *reply;
-	DBusMessageIter args, array, network, item;
+	DBusMessageIter args, array, item;
 	DBusError err;
 	char *s, buffer[2048], *t, *ssid, *bssid, *flags;
 	ssize_t bytes;
@@ -235,7 +239,6 @@ get_networks(DBusConnection *con, DBusMessage *msg)
 	dbus_message_iter_init_append(reply, &args);
 	dbus_message_iter_open_container(&args,
 					 DBUS_TYPE_ARRAY,
-					 DBUS_TYPE_ARRAY_AS_STRING
 					 DBUS_STRUCT_BEGIN_CHAR_AS_STRING
 					 DBUS_TYPE_INT32_AS_STRING
 					 DBUS_TYPE_STRING_AS_STRING
@@ -243,15 +246,6 @@ get_networks(DBusConnection *con, DBusMessage *msg)
 					 DBUS_TYPE_STRING_AS_STRING
 					 DBUS_STRUCT_END_CHAR_AS_STRING,
 					 &array);
-	dbus_message_iter_open_container(&array,
-					 DBUS_TYPE_ARRAY,
-					 DBUS_STRUCT_BEGIN_CHAR_AS_STRING
-					 DBUS_TYPE_INT32_AS_STRING
-					 DBUS_TYPE_STRING_AS_STRING
-					 DBUS_TYPE_STRING_AS_STRING
-					 DBUS_TYPE_STRING_AS_STRING
-					 DBUS_STRUCT_END_CHAR_AS_STRING,
-					 &network);
 	bytes = wpa_cmd(s, "LIST_NETWORKS", buffer, sizeof(buffer));
 	s = strchr(buffer, '\n');
 	if (s != NULL) {
@@ -271,7 +265,7 @@ get_networks(DBusConnection *con, DBusMessage *msg)
 				break;
 			*flags++ = '\0';
 			id = strtoul(t, NULL, 0);
-			dbus_message_iter_open_container(&network,
+			dbus_message_iter_open_container(&array,
 							 DBUS_TYPE_STRUCT,
 							 NULL,
 							 &item);
@@ -287,10 +281,9 @@ get_networks(DBusConnection *con, DBusMessage *msg)
 			dbus_message_iter_append_basic(&item,
 						       DBUS_TYPE_STRING,
 						       &flags);
-			dbus_message_iter_close_container(&network, &item);
+			dbus_message_iter_close_container(&array, &item);
 		}
 	}
-	dbus_message_iter_close_container(&array, &network);
 	dbus_message_iter_close_container(&args, &array);
 
 	dbus_connection_send(con, reply, NULL);
@@ -377,11 +370,18 @@ disable_network(DBusConnection *con, DBusMessage *msg)
 {
 	return _network(con, msg,
 			"DISABLE_NETWORK",
-			"Failed to enable the network");
+			"Failed to disable the network");
 }
 
 static DBusHandlerResult
-get_parameter(DBusConnection *con, DBusMessage *msg)
+select_network(DBusConnection *con, DBusMessage *msg)
+{
+	return _network(con, msg,
+			"SELECT_NETWORK",
+			"Failed to select the network");
+}
+static DBusHandlerResult
+get_network(DBusConnection *con, DBusMessage *msg)
 {
 	DBusMessage *reply;
 	DBusMessageIter args;
@@ -417,7 +417,7 @@ get_parameter(DBusConnection *con, DBusMessage *msg)
 }
 
 static DBusHandlerResult
-set_parameter(DBusConnection *con, DBusMessage *msg)
+set_network(DBusConnection *con, DBusMessage *msg)
 {
 	DBusMessage *reply;
 	DBusError err;
@@ -480,11 +480,15 @@ wpa_dbus_handler(DBusConnection *con, DBusMessage *msg)
 		return disable_network(con, msg);
 	else if (dbus_message_is_method_call(msg,
 					     DHCPCD_SERVICE,
-					     "GetNetworkParameter"))
-		return get_parameter(con, msg);
+					     "SelectNetwork"))
+		return select_network(con, msg);
 	else if (dbus_message_is_method_call(msg,
 					     DHCPCD_SERVICE,
-					     "SetNetworkParameter"))
-		return set_parameter(con, msg);
+					     "GetNetwork"))
+		return get_network(con, msg);
+	else if (dbus_message_is_method_call(msg,
+					     DHCPCD_SERVICE,
+					     "SetNetwork"))
+		return set_network(con, msg);
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
