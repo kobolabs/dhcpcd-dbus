@@ -88,6 +88,12 @@ const char *wpa_introspection_xml =
 	"    <method name=\"SaveConfig\">\n"
 	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
 	"    </method>\n"
+	"    <method name=\"Disconnect\">\n"
+	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
+	"    </method>\n"
+	"    <method name=\"Reassociate\">\n"
+	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
+	"    </method>\n"
 	"    <signal name=\"ScanResults\">\n"
 	"      <arg name=\"interface\" direction=\"out\" type=\"s\"/>\n"
 	"    </signal>\n";
@@ -406,6 +412,22 @@ save_config(DBusConnection *con, DBusMessage *msg)
 }
 
 static DBusHandlerResult
+reassociate(DBusConnection *con, DBusMessage *msg)
+{
+	return _cmd(con, msg,
+		    "REASSOCIATE",
+		    "Failed to reassociate");
+}
+
+static DBusHandlerResult
+disconnect(DBusConnection *con, DBusMessage *msg)
+{
+	return _cmd(con, msg,
+		    "DISCONNECT",
+		    "Failed to disconnect");
+}
+
+static DBusHandlerResult
 get_network(DBusConnection *con, DBusMessage *msg)
 {
 	DBusMessage *reply;
@@ -519,5 +541,13 @@ wpa_dbus_handler(DBusConnection *con, DBusMessage *msg)
 					     DHCPCD_SERVICE,
 					     "SaveConfig"))
 		return save_config(con, msg);
+	else if (dbus_message_is_method_call(msg,
+					     DHCPCD_SERVICE,
+					     "Disconnect"))
+		return disconnect(con, msg);
+	else if (dbus_message_is_method_call(msg,
+					     DHCPCD_SERVICE,
+					     "Reassociate"))
+		return reassociate(con, msg);
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
