@@ -445,6 +445,7 @@ dhcpcd_close(void)
 
 	retval = shutdown(command_fd, SHUT_RDWR);
 	command_fd = -1;
+	delete_event(listen_fd);
 	retval |= shutdown(listen_fd, SHUT_RDWR);
 	listen_fd = -1;
 	free_configs();

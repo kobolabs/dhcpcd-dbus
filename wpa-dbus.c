@@ -294,7 +294,7 @@ add_network(DBusConnection *con, DBusMessage *msg)
 	bytes = wpa_cmd(s, "ADD_NETWORK", buffer, sizeof(buffer));
 	if (bytes == -1 || bytes == 0)
 		return return_dbus_error(con, msg, S_WPA,
-					 "Failed too add a new network");
+					 "Failed to add a new network");
 	reply = dbus_message_new_method_return(msg);
 	id = strtol(buffer, NULL, 0);
 	dbus_message_iter_init_append(reply, &args);
