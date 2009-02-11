@@ -66,8 +66,8 @@ set_nonblock(int fd)
 {
 	int flags;
 
-	if ((flags = fcntl(fd, F_GETFL, 0)) == -1
-	    || fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1)
+	if ((flags = fcntl(fd, F_GETFL, 0)) == -1 ||
+	    fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1)
 	{
 		syslog(LOG_ERR, "fcntl: %m");
 		return -1;
@@ -425,7 +425,7 @@ dhcpcd_init(_unused void *data)
 		if (c == NULL)
 			return;
 		syslog(LOG_INFO, "retrieved interface %s (%s)",
-		       c->iface, dhcpcd_get_value(c, "reason="));
+		    c->iface, dhcpcd_get_value(c, "reason="));
 	}
 
 	sort_configs();

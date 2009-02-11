@@ -79,10 +79,10 @@ static int get_monotonic(struct timeval *tp)
 
 static int
 _add_event_flags(int fd,
-		 int flags,
-		 void (*callback)(void *),
-		 void (*callback_f)(int, void *),
-		 void *arg)
+    int flags,
+    void (*callback)(void *),
+    void (*callback_f)(int, void *),
+    void *arg)
 {
 	struct event *e, *last = NULL;
 
@@ -154,7 +154,7 @@ delete_event(int fd)
 
 int
 add_timeout_tv(const struct timeval *when,
-	       void (*callback)(void *), void *arg)
+    void (*callback)(void *), void *arg)
 {
 	struct timeval w;
 	struct timeout *t, *tt = NULL;
@@ -217,8 +217,7 @@ add_timeout_tv(const struct timeval *when,
 }
 
 int
-add_timeout_sec(time_t when,
-		void (*callback)(void *), void *arg)
+add_timeout_sec(time_t when, void (*callback)(void *), void *arg)
 {
 	struct timeval tv;
 
@@ -231,8 +230,7 @@ add_timeout_sec(time_t when,
  * callbacks given. Handy for deleting everything apart from the expire
  * timeout. */
 int
-delete_timeouts(void *arg,
-		void (*callback)(void *), ...)
+delete_timeouts(void *arg, void (*callback)(void *), ...)
 {
 	struct timeout *t, *tt, *last = NULL;
 	va_list va;
@@ -351,11 +349,11 @@ start_eloop(void)
 			timersub(&timeouts->when, &now, &tv);
 			if (tv.tv_sec > INT_MAX / 1000 ||
 			    (tv.tv_sec == INT_MAX / 1000 &&
-			     (tv.tv_usec + 999) / 1000 > INT_MAX % 1000))
+				(tv.tv_usec + 999) / 1000 > INT_MAX % 1000))
 				msecs = INT_MAX;
 			else
 				msecs = tv.tv_sec * 1000 +
-					(tv.tv_usec + 999) / 1000;
+				    (tv.tv_usec + 999) / 1000;
 		} else
 			/* No timeouts, so wait forever. */
 			msecs = -1;

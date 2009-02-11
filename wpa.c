@@ -64,7 +64,7 @@ _wpa_open(const char *iface, char **path)
 	memset(&sun, 0, sizeof(sun));
 	sun.sun_family = AF_UNIX;
 	snprintf(sun.sun_path, sizeof(sun.sun_path),
-		 "/tmp/" PACKAGE "-wpa-%d.%d", getpid(), counter++);
+	    "/tmp/" PACKAGE "-wpa-%d.%d", getpid(), counter++);
 	*path = strdup(sun.sun_path);
 	len = sizeof(sun.sun_family) + strlen(sun.sun_path) + 1;
 	if (bind(fd, (struct sockaddr *)&sun, len) == -1) {
@@ -150,7 +150,7 @@ attach_detach(struct if_sock *ifs, int attach)
 		return 0;
 	if (attach > 0) {
 		if (_wpa_cmd(ifs->fd, "ATTACH",
-			     buffer, sizeof(buffer)) == -1)
+			buffer, sizeof(buffer)) == -1)
 			return -1;
 		if (strcmp(buffer, "OK\n") != 0)
 			return -1;
@@ -258,13 +258,14 @@ ping(void *arg)
 
 	ifs = (struct if_sock *)arg;
 	if (_wpa_cmd(ifs->fd, "PING", buffer, sizeof(buffer)) > 0 &&
-	    strncmp(buffer, "PONG\n", 5) == 0) {
+	    strncmp(buffer, "PONG\n", 5) == 0)
+	{
 		add_timeout_sec(1, ping, ifs);
 		return;
 	}
 
 	syslog(LOG_ERR, "lost connection to wpa_supplicant on interface %s",
-	       ifs->iface);
+	    ifs->iface);
 	c = dhcpcd_get_config(ifs->iface);
 	wpa_close(c->iface);
 	add_timeout_sec(1, wpa_init, (void *)UNCONST(c->iface));

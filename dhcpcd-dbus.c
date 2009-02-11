@@ -44,36 +44,36 @@
 DBusConnection *connection;
 
 static const char *dhcpcd_introspection_xml =
-	"    <method name=\"GetVersion\">\n"
-	"      <arg name=\"version\" direction=\"out\" type=\"s\"/>\n"
-	"    </method>\n"
-	"    <method name=\"GetDhcpcdVersion\">\n"
-	"      <arg name=\"version\" direction=\"out\" type=\"s\"/>\n"
-	"    </method>\n"
-	"    <method name=\"ListInterfaces\">\n"
-	"      <arg name=\"interfaces\" direction=\"out\" type=\"as\"/>\n"
-	"    </method>\n"
-	"    <method name=\"GetInterfaces\">\n"
-	"      <arg name=\"interfaces\" direction=\"out\" type=\"a{sa{sv}}\"/>\n"
-	"    </method>\n"
-	"    <method name=\"GetStatus\">\n"
-	"      <arg name=\"Status\" direction=\"out\" type=\"s\"/>\n"
-	"    </method>\n"
-	"    <method name=\"Rebind\">\n"
-	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
-	"    </method>\n"
-	"    <method name=\"Release\">\n"
-	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
-	"    </method>\n"
-	"    <method name=\"Stop\">\n"
-	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
-	"    </method>\n"
-	"    <signal name=\"Event\">\n"
-	"      <arg name=\"configuration\" type=\"a{sv}\">\n"
-	"    </signal>\n"
-	"    <signal name=\"StatusChanged\">\n"
-	"      <arg name=\"status\" type=\"s\">\n"
-	"    </signal>\n";
+    "    <method name=\"GetVersion\">\n"
+    "      <arg name=\"version\" direction=\"out\" type=\"s\"/>\n"
+    "    </method>\n"
+    "    <method name=\"GetDhcpcdVersion\">\n"
+    "      <arg name=\"version\" direction=\"out\" type=\"s\"/>\n"
+    "    </method>\n"
+    "    <method name=\"ListInterfaces\">\n"
+    "      <arg name=\"interfaces\" direction=\"out\" type=\"as\"/>\n"
+    "    </method>\n"
+    "    <method name=\"GetInterfaces\">\n"
+    "      <arg name=\"interfaces\" direction=\"out\" type=\"a{sa{sv}}\"/>\n"
+    "    </method>\n"
+    "    <method name=\"GetStatus\">\n"
+    "      <arg name=\"Status\" direction=\"out\" type=\"s\"/>\n"
+    "    </method>\n"
+    "    <method name=\"Rebind\">\n"
+    "      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
+    "    </method>\n"
+    "    <method name=\"Release\">\n"
+    "      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
+    "    </method>\n"
+    "    <method name=\"Stop\">\n"
+    "      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
+    "    </method>\n"
+    "    <signal name=\"Event\">\n"
+    "      <arg name=\"configuration\" type=\"a{sv}\">\n"
+    "    </signal>\n"
+    "    <signal name=\"StatusChanged\">\n"
+    "      <arg name=\"status\" type=\"s\">\n"
+    "    </signal>\n";
 
 static const struct o_dbus const dhos[] = {
 	{ "interface=", DBUS_TYPE_STRING, 0, "Interface" },
@@ -178,7 +178,7 @@ static const struct o_dbus const dhos[] = {
 
 static int
 append_config(DBusMessageIter *iter,
-		const char *prefix, const struct dhcpcd_config *c)
+    const char *prefix, const struct dhcpcd_config *c)
 {
 	char *p, *e;
 	const struct o_dbus *dhop;
@@ -194,16 +194,14 @@ append_config(DBusMessageIter *iter,
 			l = strlen(dhop->var);
 			if (strncmp(p, dhop->var, l) == 0) {
 				retval = dict_append_config_item(iter,
-								 dhop,
-								 p + l);
+				    dhop, p + l);
 				break;
 			}
 			if (strncmp(p, prefix, lp) == 0 &&
 			    strncmp(p + lp, dhop->var, l) == 0)
 			{
 				retval = dict_append_config_item(iter,
-								 dhop,
-								 p + l + lp);
+				    dhop, p + l + lp);
 				break;
 			}
 		}
@@ -216,8 +214,8 @@ append_config(DBusMessageIter *iter,
 }
 
 DBusHandlerResult _printf(4, 5)
-return_dbus_error(DBusConnection *con, DBusMessage *msg,
-		  const char *name, const char *fmt, ...)
+	return_dbus_error(DBusConnection *con, DBusMessage *msg,
+	    const char *name, const char *fmt, ...)
 {
 	char buffer[1024];
 	DBusMessage *reply;
@@ -239,9 +237,9 @@ return_status(DBusConnection *con, DBusMessage *msg)
 
 	reply = dbus_message_new_method_return(msg);
 	dbus_message_append_args(reply,
-				 DBUS_TYPE_STRING,
-				 &dhcpcd_status,
-				 DBUS_TYPE_INVALID);
+	    DBUS_TYPE_STRING,
+	    &dhcpcd_status,
+	    DBUS_TYPE_INVALID);
 	dbus_connection_send(con, reply, NULL);
 	dbus_message_unref(reply);
 	return DBUS_HANDLER_RESULT_HANDLED;
@@ -254,15 +252,16 @@ dhcpcd_dbus_signal_status(const char *status)
 	DBusMessageIter args;
 
 	syslog(LOG_INFO, "status changed to %s", status);
-	msg = dbus_message_new_signal(DHCPCD_PATH, DHCPCD_SERVICE, "StatusChanged");
+	msg = dbus_message_new_signal(DHCPCD_PATH, DHCPCD_SERVICE,
+	    "StatusChanged");
 	if (msg == NULL) {
 		syslog(LOG_ERR, "failed to make a status changed message");
 		return;
 	}
 	dbus_message_iter_init_append(msg, &args);
 	dbus_message_iter_append_basic(&args,
-				       DBUS_TYPE_STRING,
-				       &status);
+	    DBUS_TYPE_STRING,
+	    &status);
 	if (!dbus_connection_send(connection, msg, NULL))
 		syslog(LOG_ERR, "failed to send status to dbus");
 	dbus_message_unref(msg);
@@ -286,12 +285,12 @@ dhcpcd_dbus_configure(const struct dhcpcd_config *c)
 	syslog(LOG_INFO, "event on interface %s (%s)", c->iface, reason);
 	dbus_message_iter_init_append(msg, &args);
 	dbus_message_iter_open_container(&args,
-					 DBUS_TYPE_ARRAY,
-					 DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
-					 DBUS_TYPE_STRING_AS_STRING
-					 DBUS_TYPE_VARIANT_AS_STRING
-					 DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
-					 &dict);
+	    DBUS_TYPE_ARRAY,
+	    DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+	    DBUS_TYPE_STRING_AS_STRING
+	    DBUS_TYPE_VARIANT_AS_STRING
+	    DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
+	    &dict);
 	if (dhcpcd_get_value(c, "new_ip_address") ||
 	    strcmp(reason, "CARRIER") == 0)
 		retval = append_config(&dict, "new_", c);
@@ -307,20 +306,20 @@ dhcpcd_dbus_configure(const struct dhcpcd_config *c)
 }
 
 static const char *introspection_header_xml =
-	"<!DOCTYPE node PUBLIC \"-//freedesktop//"
-	"DTD D-BUS Object Introspection 1.0//EN\"\n"
-	"http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd\";>\n"
-	"<node name=\"" DHCPCD_PATH "\">\n"
-	"  <interface name=\"org.freedesktop.DBus.Introspectable\">\n"
-	"    <method name=\"Introspect\">\n"
-	"      <arg name=\"data\" direction=\"out\" type=\"s\"/>\n"
-	"    </method>\n"
-	"  </interface>\n"
-	"  <interface name=\"" DHCPCD_SERVICE "\">\n";
+    "<!DOCTYPE node PUBLIC \"-//freedesktop//"
+    "DTD D-BUS Object Introspection 1.0//EN\"\n"
+    "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd\";>\n"
+    "<node name=\"" DHCPCD_PATH "\">\n"
+    "  <interface name=\"org.freedesktop.DBus.Introspectable\">\n"
+    "    <method name=\"Introspect\">\n"
+    "      <arg name=\"data\" direction=\"out\" type=\"s\"/>\n"
+    "    </method>\n"
+    "  </interface>\n"
+    "  <interface name=\"" DHCPCD_SERVICE "\">\n";
 
 static const char *introspection_footer_xml =
-	"  </interface>\n"
-	"</node>\n";
+    "  </interface>\n"
+    "</node>\n";
 
 static DBusHandlerResult
 introspect(DBusConnection *con, DBusMessage *msg)
@@ -330,22 +329,22 @@ introspect(DBusConnection *con, DBusMessage *msg)
 	size_t len;
 
 	len = strlen(introspection_header_xml) +
-		strlen(dhcpcd_introspection_xml) +
-		strlen(wpa_introspection_xml) +
-		strlen(introspection_footer_xml) + 1;
+	    strlen(dhcpcd_introspection_xml) +
+	    strlen(wpa_introspection_xml) +
+	    strlen(introspection_footer_xml) + 1;
 	xml = malloc(len);
 	if (xml == NULL)
 		return DBUS_HANDLER_RESULT_HANDLED;
 	snprintf(xml, sizeof(xml), "%s%s%s%s",
-		 introspection_header_xml,
-		 dhcpcd_introspection_xml,
-		 wpa_introspection_xml,
-		 introspection_footer_xml);
+	    introspection_header_xml,
+	    dhcpcd_introspection_xml,
+	    wpa_introspection_xml,
+	    introspection_footer_xml);
 	reply = dbus_message_new_method_return(msg);
 	dbus_message_append_args(reply,
-				 DBUS_TYPE_STRING,
-				 &xml,
-				 DBUS_TYPE_INVALID);
+	    DBUS_TYPE_STRING,
+	    &xml,
+	    DBUS_TYPE_INVALID);
 	dbus_connection_send(con, reply, NULL);
 	dbus_message_unref(reply);
 	free(xml);
@@ -359,9 +358,9 @@ version(DBusConnection *con, DBusMessage *msg, const char *ver)
 
 	reply = dbus_message_new_method_return(msg);
 	dbus_message_append_args(reply,
-				 DBUS_TYPE_STRING,
-				 &ver,
-				 DBUS_TYPE_INVALID);
+	    DBUS_TYPE_STRING,
+	    &ver,
+	    DBUS_TYPE_INVALID);
 	dbus_connection_send(con, reply, NULL);
 	dbus_message_unref(reply);
 	return DBUS_HANDLER_RESULT_HANDLED;
@@ -378,32 +377,32 @@ dhcpcd_get_interfaces(DBusConnection *con, DBusMessage *msg)
 	dbus_message_iter_init_append(reply, &ifaces);
 
 	dbus_message_iter_open_container(&ifaces,
-					 DBUS_TYPE_ARRAY,
-					 DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
-					 DBUS_TYPE_STRING_AS_STRING
-					 DBUS_TYPE_ARRAY_AS_STRING
-					 DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
-					 DBUS_TYPE_STRING_AS_STRING
-					 DBUS_TYPE_VARIANT_AS_STRING
-					 DBUS_DICT_ENTRY_END_CHAR_AS_STRING
-					 DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
-					 &iface);
+	    DBUS_TYPE_ARRAY,
+	    DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+	    DBUS_TYPE_STRING_AS_STRING
+	    DBUS_TYPE_ARRAY_AS_STRING
+	    DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+	    DBUS_TYPE_STRING_AS_STRING
+	    DBUS_TYPE_VARIANT_AS_STRING
+	    DBUS_DICT_ENTRY_END_CHAR_AS_STRING
+	    DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
+	    &iface);
 
 	for (c = dhcpcd_configs; c; c = c->next) {
 		dbus_message_iter_open_container(&iface,
-						 DBUS_TYPE_DICT_ENTRY,
-						 NULL,
-						 &entry);
+		    DBUS_TYPE_DICT_ENTRY,
+		    NULL,
+		    &entry);
 		dbus_message_iter_append_basic(&entry,
-					       DBUS_TYPE_STRING,
-					       &c->iface);
+		    DBUS_TYPE_STRING,
+		    &c->iface);
 		dbus_message_iter_open_container(&entry,
-				 		 DBUS_TYPE_ARRAY,
-						 DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
-						 DBUS_TYPE_STRING_AS_STRING
-						 DBUS_TYPE_VARIANT_AS_STRING
-						 DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
-						 &dict);
+		    DBUS_TYPE_ARRAY,
+		    DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+		    DBUS_TYPE_STRING_AS_STRING
+		    DBUS_TYPE_VARIANT_AS_STRING
+		    DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
+		    &dict);
 		append_config(&dict, "new_", c);
 		dbus_message_iter_close_container(&entry, &dict);
 		dbus_message_iter_close_container(&iface, &entry);
@@ -426,14 +425,14 @@ dhcpcd_list_interfaces(DBusConnection *con, DBusMessage *msg)
 	dbus_message_iter_init_append(reply, &ifaces);
 
 	dbus_message_iter_open_container(&ifaces,
-					 DBUS_TYPE_ARRAY,
-					 DBUS_TYPE_STRING_AS_STRING,
-					 &iface);
+	    DBUS_TYPE_ARRAY,
+	    DBUS_TYPE_STRING_AS_STRING,
+	    &iface);
 
 	for (c = dhcpcd_configs; c; c = c->next)
 		dbus_message_iter_append_basic(&iface,
-					       DBUS_TYPE_STRING,
-					       &c->iface);
+		    DBUS_TYPE_STRING,
+		    &c->iface);
 
 	dbus_message_iter_close_container(&ifaces, &iface);
 	dbus_connection_send(con, reply, NULL);
@@ -443,7 +442,7 @@ dhcpcd_list_interfaces(DBusConnection *con, DBusMessage *msg)
 
 static DBusHandlerResult
 dhcpcd_iface_command(DBusConnection *con, DBusMessage *msg,
-		     const char *command)
+    const char *command)
 {
 	DBusMessage *reply;
 	DBusError err;
@@ -451,9 +450,9 @@ dhcpcd_iface_command(DBusConnection *con, DBusMessage *msg,
 
 	dbus_error_init(&err);
 	if (!dbus_message_get_args(msg, &err,
-				  DBUS_TYPE_STRING, &s, DBUS_TYPE_INVALID))
+		DBUS_TYPE_STRING, &s, DBUS_TYPE_INVALID))
 		return return_dbus_error(con, msg, S_EINVAL,
-					 "No interface specified");
+		    "No interface specified");
 
 	snprintf(cmd, sizeof(cmd), "dhcpcd %s %s", command, s);
 	dhcpcd_command(cmd, NULL);
@@ -468,40 +467,40 @@ static DBusHandlerResult
 msg_handler(DBusConnection *con, DBusMessage *msg, _unused void *data)
 {
 	if (dbus_message_is_method_call(msg,
-					DBUS_INTERFACE_INTROSPECTABLE,
-					"Introspect"))
+		DBUS_INTERFACE_INTROSPECTABLE,
+		"Introspect"))
 		return introspect(con, msg);
 	else if (dbus_message_is_method_call(msg,
-					     DHCPCD_SERVICE,
-					     "GetVersion"))
+		DHCPCD_SERVICE,
+		"GetVersion"))
 		return version(con, msg, VERSION);
 	else if (dbus_message_is_method_call(msg,
-				 	     DHCPCD_SERVICE,
-					     "GetDhcpcdVersion"))
+		DHCPCD_SERVICE,
+		"GetDhcpcdVersion"))
 		return version(con, msg, dhcpcd_version);
 	else if (dbus_message_is_method_call(msg,
-					     DHCPCD_SERVICE,
-					     "ListInterfaces"))
+		DHCPCD_SERVICE,
+		"ListInterfaces"))
 		return dhcpcd_list_interfaces(con, msg);
 	else if (dbus_message_is_method_call(msg,
-					     DHCPCD_SERVICE,
-					     "GetInterfaces"))
+		DHCPCD_SERVICE,
+		"GetInterfaces"))
 		return dhcpcd_get_interfaces(con, msg);
 	else if (dbus_message_is_method_call(msg,
-					     DHCPCD_SERVICE,
-					     "GetStatus"))
+		DHCPCD_SERVICE,
+		"GetStatus"))
 		return return_status(con, msg);
 	else if (dbus_message_is_method_call(msg,
-					     DHCPCD_SERVICE,
-					     "Rebind"))
+		DHCPCD_SERVICE,
+		"Rebind"))
 		return dhcpcd_iface_command(con, msg, "--rebind");
 	else if (dbus_message_is_method_call(msg,
-					     DHCPCD_SERVICE,
-					     "Release"))
+		DHCPCD_SERVICE,
+		"Release"))
 		return dhcpcd_iface_command(con, msg, "--release");
 	else if (dbus_message_is_method_call(msg,
-					     DHCPCD_SERVICE,
-					     "Stop"))
+		DHCPCD_SERVICE,
+		"Stop"))
 		return dhcpcd_iface_command(con, msg, "--exit");
 	return wpa_dbus_handler(con, msg);
 }
@@ -526,7 +525,7 @@ dbus_event(int revents, void *watch)
 	if (connection != NULL) {
 		dbus_connection_ref(connection);
 		while (dbus_connection_dispatch(connection)
-				== DBUS_DISPATCH_DATA_REMAINS)
+		    == DBUS_DISPATCH_DATA_REMAINS)
 			;
 		dbus_connection_unref(connection);
 	}
@@ -576,9 +575,9 @@ dhcpcd_dbus_init(void)
 	}
 			
 	ret = dbus_bus_request_name(connection,
-				    DHCPCD_SERVICE,
-				    DBUS_NAME_FLAG_REPLACE_EXISTING,
-				    &err);
+	    DHCPCD_SERVICE,
+	    DBUS_NAME_FLAG_REPLACE_EXISTING,
+	    &err);
 	if (dbus_error_is_set(&err)) {
 		syslog(LOG_ERR, "%s", err.message);
 		return -1;
@@ -588,14 +587,14 @@ dhcpcd_dbus_init(void)
 		return -1;
 	}
 	if (!dbus_connection_set_watch_functions(connection,
-						 add_watch, remove_watch,
-						 NULL, NULL, NULL))
+		add_watch, remove_watch,
+		NULL, NULL, NULL))
 	{
 		syslog(LOG_ERR, "dbus: failed to set watch functions");
 		return -1;
 	}
 	if (!dbus_connection_register_object_path(connection,
-						  DHCPCD_PATH, &vt, NULL))
+		DHCPCD_PATH, &vt, NULL))
 	{
 		syslog(LOG_ERR, "dbus: failed to register object path");
 		return -1;
