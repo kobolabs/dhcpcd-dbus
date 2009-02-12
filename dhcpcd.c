@@ -343,10 +343,7 @@ handle_event(_unused void *data)
 		return;
 	}
 	str = dhcpcd_get_value(c, "interface_order=");
-	if (str == NULL ||
-	    order == NULL ||
-	    strcmp(str, order))
-	{
+	if (str == NULL || order == NULL || strcmp(str, order)) {
 		free(order);
 		if (str == NULL)
 			order = NULL;
@@ -415,7 +412,7 @@ dhcpcd_init(_unused void *data)
 	if (bytes != sizeof(ssize_t))
 		return;
 	memcpy(&nifs, cmd, sizeof(ssize_t));
-	for (;nifs > 0; nifs--) {
+	for (; nifs > 0; nifs--) {
 		c = read_config(command_fd);
 		ifo = dhcpcd_get_value(c, "interface_order=");
 		if (ifo != NULL) {
@@ -434,8 +431,6 @@ dhcpcd_init(_unused void *data)
 		wpa_configure(c);
 
 	add_event(listen_fd, handle_event, NULL);
-
-	return;
 }
 
 int

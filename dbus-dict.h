@@ -37,7 +37,6 @@ struct o_dbus {
 };
 
 int dict_append_config_item(DBusMessageIter *,
-			    const struct o_dbus *,
-			    const char *);
+    const struct o_dbus *, const char *);
 
 #endif

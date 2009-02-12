@@ -42,61 +42,61 @@
 #define S_WPA		DHCPCD_SERVICE ".WPASupplicantError"
 
 const char *wpa_introspection_xml =
-    "    <method name=\"Scan\">\n"
-    "      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
-    "    </method>\n"
-    "    <method name=\"ScanResults\">\n"
-    "      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
-    "      <arg name=\"results\" direction=\"out\" type=\"a(a{sv})\"/>\n"
-    "    </method>\n"
-    "    <method name=\"ListNetworks\">\n"
-    "      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
-    "      <arg name=\"ids\" direction=\"out\" type=\"aa(isss)\"/>\n"
-    "    </method>\n"
-    "    <method name=\"AddNetwork\">\n"
-    "      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
-    "      <arg name=\"id\" direction=\"out\" type=\"i\"/>\n"
-    "    </method>\n"
-    "    <method name=\"RemoveNetwork\">\n"
-    "      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
-    "      <arg name=\"id\" direction=\"in\" type=\"i\"/>\n"
-    "    </method>\n"
-    "    <method name=\"EnableNetwork\">\n"
-    "      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
-    "      <arg name=\"id\" direction=\"in\" type=\"i\"/>\n"
-    "    </method>\n"
-    "    <method name=\"DisableNetwork\">\n"
-    "      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
-    "      <arg name=\"id\" direction=\"in\" type=\"i\"/>\n"
-    "    </method>\n"
-    "    <method name=\"SelectNetwork\">\n"
-    "      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
-    "      <arg name=\"id\" direction=\"in\" type=\"i\"/>\n"
-    "    </method>\n"
-    "    <method name=\"GetNetwork\">\n"
-    "      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
-    "      <arg name=\"id\" direction=\"in\" type=\"i\"/>\n"
-    "      <arg name=\"parameter\" direction=\"in\" type=\"s\"/>\n"
-    "      <arg name=\"value\" direction=\"out\" type=\"s\"/>\n"
-    "    </method>\n"
-    "    <method name=\"SetNetwork\">\n"
-    "      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
-    "      <arg name=\"id\" direction=\"in\" type=\"i\"/>\n"
-    "      <arg name=\"parameter\" direction=\"in\" type=\"s\"/>\n"
-    "      <arg name=\"value\" direction=\"in\" type=\"s\"/>\n"
-    "    </method>\n"
-    "    <method name=\"SaveConfig\">\n"
-    "      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
-    "    </method>\n"
-    "    <method name=\"Disconnect\">\n"
-    "      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
-    "    </method>\n"
-    "    <method name=\"Reassociate\">\n"
-    "      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
-    "    </method>\n"
-    "    <signal name=\"ScanResults\">\n"
-    "      <arg name=\"interface\" direction=\"out\" type=\"s\"/>\n"
-    "    </signal>\n";
+	"    <method name=\"Scan\">\n"
+	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
+	"    </method>\n"
+	"    <method name=\"ScanResults\">\n"
+	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
+	"      <arg name=\"results\" direction=\"out\" type=\"a(a{sv})\"/>\n"
+	"    </method>\n"
+	"    <method name=\"ListNetworks\">\n"
+	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
+	"      <arg name=\"ids\" direction=\"out\" type=\"aa(isss)\"/>\n"
+	"    </method>\n"
+	"    <method name=\"AddNetwork\">\n"
+	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
+	"      <arg name=\"id\" direction=\"out\" type=\"i\"/>\n"
+	"    </method>\n"
+	"    <method name=\"RemoveNetwork\">\n"
+	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
+	"      <arg name=\"id\" direction=\"in\" type=\"i\"/>\n"
+	"    </method>\n"
+	"    <method name=\"EnableNetwork\">\n"
+	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
+	"      <arg name=\"id\" direction=\"in\" type=\"i\"/>\n"
+	"    </method>\n"
+	"    <method name=\"DisableNetwork\">\n"
+	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
+	"      <arg name=\"id\" direction=\"in\" type=\"i\"/>\n"
+	"    </method>\n"
+	"    <method name=\"SelectNetwork\">\n"
+	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
+	"      <arg name=\"id\" direction=\"in\" type=\"i\"/>\n"
+	"    </method>\n"
+	"    <method name=\"GetNetwork\">\n"
+	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
+	"      <arg name=\"id\" direction=\"in\" type=\"i\"/>\n"
+	"      <arg name=\"parameter\" direction=\"in\" type=\"s\"/>\n"
+	"      <arg name=\"value\" direction=\"out\" type=\"s\"/>\n"
+	"    </method>\n"
+	"    <method name=\"SetNetwork\">\n"
+	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
+	"      <arg name=\"id\" direction=\"in\" type=\"i\"/>\n"
+	"      <arg name=\"parameter\" direction=\"in\" type=\"s\"/>\n"
+	"      <arg name=\"value\" direction=\"in\" type=\"s\"/>\n"
+	"    </method>\n"
+	"    <method name=\"SaveConfig\">\n"
+	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
+	"    </method>\n"
+	"    <method name=\"Disconnect\">\n"
+	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
+	"    </method>\n"
+	"    <method name=\"Reassociate\">\n"
+	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
+	"    </method>\n"
+	"    <signal name=\"ScanResults\">\n"
+	"      <arg name=\"interface\" direction=\"out\" type=\"s\"/>\n"
+	"    </signal>\n";
 
 static const struct o_dbus const wpaos[] = {
 	{ "bssid=", DBUS_TYPE_STRING, 0, "BSSID" },
@@ -122,8 +122,7 @@ attach_scan_results(const char *iface, DBusMessageIter *iter)
 	const struct o_dbus *wpaop;
 	int retval;
 
-	dbus_message_iter_open_container(iter,
-	    DBUS_TYPE_ARRAY,
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
 	    DBUS_TYPE_ARRAY_AS_STRING
 	    DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
 	    DBUS_TYPE_STRING_AS_STRING
@@ -138,8 +137,7 @@ attach_scan_results(const char *iface, DBusMessageIter *iter)
 		    bytes == 0 ||
 		    strncmp(buffer, "FAIL", 4) == 0)
 			break;
-		dbus_message_iter_open_container(&array,
-		    DBUS_TYPE_ARRAY,
+		dbus_message_iter_open_container(&array, DBUS_TYPE_ARRAY,
 		    DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
 		    DBUS_TYPE_STRING_AS_STRING
 		    DBUS_TYPE_VARIANT_AS_STRING
@@ -182,8 +180,7 @@ wpa_dbus_signal_scan_results(const char *iface)
 	}
 	dbus_message_iter_init_append(msg, &args);
 	dbus_message_iter_append_basic(&args,
-	    DBUS_TYPE_STRING,
-	    &iface);
+	    DBUS_TYPE_STRING, &iface);
 	if (!dbus_connection_send(connection, msg, NULL))
 		syslog(LOG_ERR, "failed to send status to dbus");
 	dbus_message_unref(msg);
@@ -228,8 +225,7 @@ list_networks(DBusConnection *con, DBusMessage *msg)
 		    "No interface specified");
 	reply = dbus_message_new_method_return(msg);
 	dbus_message_iter_init_append(reply, &args);
-	dbus_message_iter_open_container(&args,
-	    DBUS_TYPE_ARRAY,
+	dbus_message_iter_open_container(&args, DBUS_TYPE_ARRAY,
 	    DBUS_STRUCT_BEGIN_CHAR_AS_STRING
 	    DBUS_TYPE_INT32_AS_STRING
 	    DBUS_TYPE_STRING_AS_STRING
@@ -257,21 +253,15 @@ list_networks(DBusConnection *con, DBusMessage *msg)
 			*flags++ = '\0';
 			id = strtoul(t, NULL, 0);
 			dbus_message_iter_open_container(&array,
-			    DBUS_TYPE_STRUCT,
-			    NULL,
-			    &item);
+			    DBUS_TYPE_STRUCT, NULL, &item);
 			dbus_message_iter_append_basic(&item,
-			    DBUS_TYPE_INT32,
-			    &id);
+			    DBUS_TYPE_INT32, &id);
 			dbus_message_iter_append_basic(&item,
-			    DBUS_TYPE_STRING,
-			    &ssid);
+			    DBUS_TYPE_STRING, &ssid);
 			dbus_message_iter_append_basic(&item,
-			    DBUS_TYPE_STRING,
-			    &bssid);
+			    DBUS_TYPE_STRING, &bssid);
 			dbus_message_iter_append_basic(&item,
-			    DBUS_TYPE_STRING,
-			    &flags);
+			    DBUS_TYPE_STRING, &flags);
 			dbus_message_iter_close_container(&array, &item);
 		}
 	}
@@ -366,56 +356,49 @@ static DBusHandlerResult
 scan(DBusConnection *con, DBusMessage *msg)
 {
 	return _cmd(con, msg,
-	    "SCAN",
-	    "Failed to save configuration");
+	    "SCAN", "Failed to save configuration");
 }
 
 static DBusHandlerResult
 remove_network(DBusConnection *con, DBusMessage *msg)
 {
 	return _network(con, msg,
-	    "REMOVE_NETWORK",
-	    "Failed to remove the network");
+	    "REMOVE_NETWORK", "Failed to remove the network");
 }
 
 static DBusHandlerResult
 enable_network(DBusConnection *con, DBusMessage *msg)
 {
 	return _network(con, msg,
-	    "ENABLE_NETWORK",
-	    "Failed to enable the network");
+	    "ENABLE_NETWORK", "Failed to enable the network");
 }
 
 static DBusHandlerResult
 disable_network(DBusConnection *con, DBusMessage *msg)
 {
 	return _network(con, msg,
-	    "DISABLE_NETWORK",
-	    "Failed to disable the network");
+	    "DISABLE_NETWORK", "Failed to disable the network");
 }
 
 static DBusHandlerResult
 select_network(DBusConnection *con, DBusMessage *msg)
 {
 	return _network(con, msg,
-	    "SELECT_NETWORK",
-	    "Failed to select the network");
+	    "SELECT_NETWORK", "Failed to select the network");
 }
 
 static DBusHandlerResult
 save_config(DBusConnection *con, DBusMessage *msg)
 {
 	return _cmd(con, msg,
-	    "SAVE_CONFIG",
-	    "Failed to save configuration");
+	    "SAVE_CONFIG", "Failed to save configuration");
 }
 
 static DBusHandlerResult
 reassociate(DBusConnection *con, DBusMessage *msg)
 {
 	return _cmd(con, msg,
-	    "REASSOCIATE",
-	    "Failed to reassociate");
+	    "REASSOCIATE", "Failed to reassociate");
 }
 
 static DBusHandlerResult
@@ -454,9 +437,7 @@ get_network(DBusConnection *con, DBusMessage *msg)
 	reply = dbus_message_new_method_return(msg);
 	s = buffer;
 	dbus_message_iter_init_append(reply, &args);
-	dbus_message_iter_append_basic(&args,
-	    DBUS_TYPE_STRING,
-	    &s);
+	dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &s);
 	dbus_connection_send(con, reply, NULL);
 	dbus_message_unref(reply);
 	return DBUS_HANDLER_RESULT_HANDLED;
@@ -496,57 +477,31 @@ set_network(DBusConnection *con, DBusMessage *msg)
 DBusHandlerResult
 wpa_dbus_handler(DBusConnection *con, DBusMessage *msg)
 {
-	if (dbus_message_is_method_call(msg,
-		DHCPCD_SERVICE,
-		"Scan"))
+	if (dbus_message_is_method_call(msg, DHCPCD_SERVICE, "Scan"))
 		return scan(con, msg);
-	else if (dbus_message_is_method_call(msg,
-		DHCPCD_SERVICE,
-		"ScanResults"))
+	if (dbus_message_is_method_call(msg, DHCPCD_SERVICE, "ScanResults"))
 		return scan_results(con, msg);
-	else if (dbus_message_is_method_call(msg,
-		DHCPCD_SERVICE,
-		"ListNetworks"))
+	if (dbus_message_is_method_call(msg, DHCPCD_SERVICE, "ListNetworks"))
 		return list_networks(con, msg);
-	else if (dbus_message_is_method_call(msg,
-		DHCPCD_SERVICE,
-		"AddNetwork"))
+	if (dbus_message_is_method_call(msg, DHCPCD_SERVICE, "AddNetwork"))
 		return add_network(con, msg);
-	else if (dbus_message_is_method_call(msg,
-		DHCPCD_SERVICE,
-		"RemoveNetwork"))
+	if (dbus_message_is_method_call(msg, DHCPCD_SERVICE, "RemoveNetwork"))
 		return remove_network(con, msg);
-	else if (dbus_message_is_method_call(msg,
-		DHCPCD_SERVICE,
-		"EnableNetwork"))
+	if (dbus_message_is_method_call(msg, DHCPCD_SERVICE, "EnableNetwork"))
 		return enable_network(con, msg);
-	else if (dbus_message_is_method_call(msg,
-		DHCPCD_SERVICE,
-		"DisableNetwork"))
+	if (dbus_message_is_method_call(msg, DHCPCD_SERVICE, "DisableNetwork"))
 		return disable_network(con, msg);
-	else if (dbus_message_is_method_call(msg,
-		DHCPCD_SERVICE,
-		"SelectNetwork"))
+	if (dbus_message_is_method_call(msg, DHCPCD_SERVICE, "SelectNetwork"))
 		return select_network(con, msg);
-	else if (dbus_message_is_method_call(msg,
-		DHCPCD_SERVICE,
-		"GetNetwork"))
+	if (dbus_message_is_method_call(msg, DHCPCD_SERVICE, "GetNetwork"))
 		return get_network(con, msg);
-	else if (dbus_message_is_method_call(msg,
-		DHCPCD_SERVICE,
-		"SetNetwork"))
+	if (dbus_message_is_method_call(msg, DHCPCD_SERVICE, "SetNetwork"))
 		return set_network(con, msg);
-	else if (dbus_message_is_method_call(msg,
-		DHCPCD_SERVICE,
-		"SaveConfig"))
+	if (dbus_message_is_method_call(msg, DHCPCD_SERVICE, "SaveConfig"))
 		return save_config(con, msg);
-	else if (dbus_message_is_method_call(msg,
-		DHCPCD_SERVICE,
-		"Disconnect"))
+	if (dbus_message_is_method_call(msg, DHCPCD_SERVICE, "Disconnect"))
 		return disconnect(con, msg);
-	else if (dbus_message_is_method_call(msg,
-		DHCPCD_SERVICE,
-		"Reassociate"))
+	if (dbus_message_is_method_call(msg, DHCPCD_SERVICE, "Reassociate"))
 		return reassociate(con, msg);
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }

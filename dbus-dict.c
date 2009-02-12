@@ -37,7 +37,8 @@
 #define S_EINVAL	DHCPCD_SERVICE ".InvalidArgument"
 
 static int
-append_config_value(DBusMessageIter *entry, int type, const char *data)
+append_config_value(DBusMessageIter *entry, int type,
+    const char *data)
 {
 	int retval;
 	DBusMessageIter var;
@@ -55,67 +56,49 @@ append_config_value(DBusMessageIter *entry, int type, const char *data)
 			u32 = 0;
 		else
 			u32 = 1;
-		dbus_message_iter_open_container(entry,
-		    DBUS_TYPE_VARIANT,
-		    DBUS_TYPE_BOOLEAN_AS_STRING,
-		    &var);
+		dbus_message_iter_open_container(entry, DBUS_TYPE_VARIANT,
+		    DBUS_TYPE_BOOLEAN_AS_STRING, &var);
 		if (dbus_message_iter_append_basic(&var,
-			DBUS_TYPE_BOOLEAN,
-			&u32))
+			DBUS_TYPE_BOOLEAN, &u32))
 			retval = 0;
 		break;
 	case DBUS_TYPE_BYTE:
 		byte = strtoul(data, NULL, 0);
-		dbus_message_iter_open_container(entry,
-		    DBUS_TYPE_VARIANT,
-		    DBUS_TYPE_BYTE_AS_STRING,
-		    &var);
-		if (dbus_message_iter_append_basic(&var,
-			DBUS_TYPE_BYTE,
+		dbus_message_iter_open_container(entry, DBUS_TYPE_VARIANT,
+		    DBUS_TYPE_BYTE_AS_STRING, &var);
+		if (dbus_message_iter_append_basic(&var, DBUS_TYPE_BYTE,
 			&byte))
 			retval = 0;
 		break;
 	case DBUS_TYPE_STRING:
-		dbus_message_iter_open_container(entry,
-		    DBUS_TYPE_VARIANT,
-		    DBUS_TYPE_STRING_AS_STRING,
-		    &var);
+		dbus_message_iter_open_container(entry, DBUS_TYPE_VARIANT,
+		    DBUS_TYPE_STRING_AS_STRING, &var);
 		if (dbus_message_iter_append_basic(&var,
-			DBUS_TYPE_STRING,
-			&data))
+			DBUS_TYPE_STRING, &data))
 			retval = 0;
 		break;
 	case DBUS_TYPE_INT16:
 		i16 = strtol(data, NULL, 0);
-		dbus_message_iter_open_container(entry,
-		    DBUS_TYPE_VARIANT,
-		    DBUS_TYPE_INT16_AS_STRING,
-		    &var);
+		dbus_message_iter_open_container(entry, DBUS_TYPE_VARIANT,
+		    DBUS_TYPE_INT16_AS_STRING, &var);
 		if (dbus_message_iter_append_basic(&var,
-			DBUS_TYPE_INT16,
-			&i16))
+			DBUS_TYPE_INT16, &i16))
 			retval = 0;
 		break;
 	case DBUS_TYPE_UINT16:
 		u16 = strtoul(data, NULL, 0);
-		dbus_message_iter_open_container(entry,
-		    DBUS_TYPE_VARIANT,
-		    DBUS_TYPE_UINT16_AS_STRING,
-		    &var);
+		dbus_message_iter_open_container(entry, DBUS_TYPE_VARIANT,
+		    DBUS_TYPE_UINT16_AS_STRING, &var);
 		if (dbus_message_iter_append_basic(&var,
-			DBUS_TYPE_UINT16,
-			&u16))
+			DBUS_TYPE_UINT16, &u16))
 			retval = 0;
 		break;
 	case DBUS_TYPE_INT32:
 		i32 = strtol(data, NULL, 0);
-		dbus_message_iter_open_container(entry,
-		    DBUS_TYPE_VARIANT,
-		    DBUS_TYPE_INT32_AS_STRING,
-		    &var);
+		dbus_message_iter_open_container(entry, DBUS_TYPE_VARIANT,
+		    DBUS_TYPE_INT32_AS_STRING, &var);
 		if (dbus_message_iter_append_basic(&var,
-			DBUS_TYPE_INT32,
-			&i32))
+			DBUS_TYPE_INT32, &i32))
 			retval = 0;
 		break;
 	case DBUS_TYPE_UINT32:
@@ -123,13 +106,10 @@ append_config_value(DBusMessageIter *entry, int type, const char *data)
 			u32 = in.s_addr;
 		else
 			u32 = strtoul(data, NULL, 0);
-		dbus_message_iter_open_container(entry,
-		    DBUS_TYPE_VARIANT,
-		    DBUS_TYPE_UINT32_AS_STRING,
-		    &var);
+		dbus_message_iter_open_container(entry, DBUS_TYPE_VARIANT,
+		    DBUS_TYPE_UINT32_AS_STRING, &var);
 		if (dbus_message_iter_append_basic(&var,
-			DBUS_TYPE_UINT32,
-			&u32))
+			DBUS_TYPE_UINT32, &u32))
 			retval = 0;
 		break;
 	default:
@@ -145,8 +125,7 @@ append_config_value(DBusMessageIter *entry, int type, const char *data)
 }
 
 static int
-append_config_array(DBusMessageIter *entry, int type,
-    const char *data)
+append_config_array(DBusMessageIter *entry, int type, const char *data)
 {
 	int retval;
 	char *ns, *p, *tok;
@@ -174,22 +153,15 @@ append_config_array(DBusMessageIter *entry, int type,
 		return -1;
 	retval = 0;
 
-	dbus_message_iter_open_container(entry,
-	    DBUS_TYPE_VARIANT,
-	    tsa,
-	    &var);
-	dbus_message_iter_open_container(&var,
-	    DBUS_TYPE_ARRAY,
-	    ts,
-	    &array);
+	dbus_message_iter_open_container(entry, DBUS_TYPE_VARIANT, tsa, &var);
+	dbus_message_iter_open_container(&var, DBUS_TYPE_ARRAY, ts, &array);
 	while ((tok = strsep(&p, " ")) != NULL) {
 		if (*tok == '\0')
 			continue;
 		switch(type) {
 		case DBUS_TYPE_STRING:
 			ok = dbus_message_iter_append_basic(&array,
-			    DBUS_TYPE_STRING,
-			    &tok);
+			    DBUS_TYPE_STRING, &tok);
 			break;
 		case DBUS_TYPE_UINT32:
 			if (strchr(data, '.') != NULL &&
@@ -198,8 +170,7 @@ append_config_array(DBusMessageIter *entry, int type,
 			else
 				u32 = strtoul(tok, NULL, 0);
 			ok = dbus_message_iter_append_basic(&array,
-			    DBUS_TYPE_UINT32,
-			    &u32);
+			    DBUS_TYPE_UINT32, &u32);
 		default:
 			ok = FALSE;
 			break;

@@ -74,7 +74,8 @@ _wpa_open(const char *iface, char **path)
 		*path = NULL;
 		return -1;
 	}
-	snprintf(sun.sun_path, sizeof(sun.sun_path), WPA_CTRL_DIR "/%s", iface);
+	snprintf(sun.sun_path, sizeof(sun.sun_path),
+	    WPA_CTRL_DIR "/%s", iface);
 	len = sizeof(sun.sun_family) + strlen(sun.sun_path) + 1;
 	if (connect(fd, (struct sockaddr *)&sun, len) == 0) {
 		set_nonblock(fd);
@@ -149,8 +150,7 @@ attach_detach(struct if_sock *ifs, int attach)
 	if (ifs->attached == attach)
 		return 0;
 	if (attach > 0) {
-		if (_wpa_cmd(ifs->fd, "ATTACH",
-			buffer, sizeof(buffer)) == -1)
+		if (_wpa_cmd(ifs->fd, "ATTACH", buffer, sizeof(buffer)) == -1)
 			return -1;
 		if (strcmp(buffer, "OK\n") != 0)
 			return -1;
@@ -258,8 +258,7 @@ ping(void *arg)
 
 	ifs = (struct if_sock *)arg;
 	if (_wpa_cmd(ifs->fd, "PING", buffer, sizeof(buffer)) > 0 &&
-	    strncmp(buffer, "PONG\n", 5) == 0)
-	{
+	    strncmp(buffer, "PONG\n", 5) == 0) {
 		add_timeout_sec(1, ping, ifs);
 		return;
 	}

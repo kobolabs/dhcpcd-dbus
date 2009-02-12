@@ -153,8 +153,7 @@ delete_event(int fd)
 }
 
 int
-add_timeout_tv(const struct timeval *when,
-    void (*callback)(void *), void *arg)
+add_timeout_tv(const struct timeval *when, void (*callback)(void *), void *arg)
 {
 	struct timeval w;
 	struct timeout *t, *tt = NULL;
@@ -353,7 +352,7 @@ start_eloop(void)
 				msecs = INT_MAX;
 			else
 				msecs = tv.tv_sec * 1000 +
-				    (tv.tv_usec + 999) / 1000;
+					(tv.tv_usec + 999) / 1000;
 		} else
 			/* No timeouts, so wait forever. */
 			msecs = -1;
@@ -406,12 +405,12 @@ start_eloop(void)
 			for (e = events; e; e = e->next) {
 				if (e->fd != fds[i].fd)
 					continue;
-				if (e->flags)
+				if (e->flags) {
 					e->callback_f(fds[i].revents, e->arg);
-				else {
-					if (fds[i].revents & (POLLIN | POLLHUP))
-						e->callback(e->arg);
+					break;
 				}
+				if (fds[i].revents & (POLLIN | POLLHUP))
+					e->callback(e->arg);
 				break;
 			}
 		}

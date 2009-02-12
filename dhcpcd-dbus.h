@@ -36,8 +36,8 @@
 extern DBusConnection *connection;
 
 DBusHandlerResult _printf(4, 5)
-return_dbus_error(DBusConnection *, DBusMessage *,
-		  const char *name, const char *fmt, ...);
+return_dbus_error(DBusConnection *,
+    DBusMessage *, const char *name, const char *fmt, ...);
 
 int dhcpcd_dbus_init(void);
 int dhcpcd_dbus_close(void);
