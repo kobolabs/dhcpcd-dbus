@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  */
 
+#include <errno.h>
 #include <poll.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -68,6 +69,16 @@ static const char *dhcpcd_introspection_xml =
 	"    <method name=\"Stop\">\n"
 	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
 	"    </method>\n"
+	"    <method name=\"GetConfig\">\n"
+	"      <arg name=\"block\" direction=\"in\" type=\"s\"/>\n"
+	"      <arg name=\"name\" direction=\"in\" type=\"s\"/>\n"
+	"      <arg name=\"config\" direction=\"out\" type=\"aa(ss)\"/>\n"
+	"    </method>\n"
+	"    <method name=\"SetConfig\">\n"
+	"      <arg name=\"block\" direction=\"in\" type=\"s\"/>\n"
+	"      <arg name=\"name\" direction=\"in\" type=\"s\"/>\n"
+	"      <arg name=\"config\" direction=\"in\" type=\"aa(ss)\"/>\n"
+	"    </method>\n"
 	"    <signal name=\"Event\">\n"
 	"      <arg name=\"configuration\" type=\"a{sv}\">\n"
 	"    </signal>\n"
@@ -87,19 +98,27 @@ static const struct o_dbus const dhos[] = {
 	{ "subnet_mask=", DBUS_TYPE_UINT32, 0, "SubnetMask" },
 	{ "subnet_cidr=", DBUS_TYPE_BYTE, 0, "SubnetCIDR" },
 	{ "network_number=", DBUS_TYPE_UINT32, 0, "NetworkNumber" },
-	{ "classless_static_routes=", DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, "ClasslessStaticRoutes" },
-	{ "ms_classless_static_routes=", DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, "MSClasslessStaticRoutes" },
-	{ "static_routes=", DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, "StaticRoutes"} ,
+	{ "classless_static_routes=", DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32,
+	  "ClasslessStaticRoutes" },
+	{ "ms_classless_static_routes=", DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32,
+	  "MSClasslessStaticRoutes" },
+	{ "static_routes=", DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32,
+	  "StaticRoutes"} ,
 	{ "routers=", DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, "Routers" },
 	{ "time_offset=", DBUS_TYPE_UINT32, 0, "TimeOffset" },
 	{ "time_servers=", DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, "TimeServers" },
-	{ "ien116_name_servers=", DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, "IEN116NameServers" },
-	{ "domain_name_servers=", DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, "DomainNameServers" },
+	{ "ien116_name_servers=", DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32,
+	  "IEN116NameServers" },
+	{ "domain_name_servers=", DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32,
+	  "DomainNameServers" },
 	{ "log_servers=", DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, "LogServers" },
-	{ "cookie_servers=", DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, "CookieServers" },
+	{ "cookie_servers=", DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32,
+	  "CookieServers" },
 	{ "lpr_servers=", DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, "LPRServers" },
-	{ "impress_servers=", DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, "ImpressServers" },
-	{ "resource_location_servers=", DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, "ResourceLocationServers" },
+	{ "impress_servers=", DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32,
+	  "ImpressServers" },
+	{ "resource_location_servers=", DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32,
+	  "ResourceLocationServers" },
 	{ "host_name=", DBUS_TYPE_STRING, 0, "Hostname" },
 	{ "boot_size=", DBUS_TYPE_UINT16, 0, "BootSize" },
 	{ "merit_dump=", DBUS_TYPE_STRING, 0, "MeritDump" },
@@ -108,71 +127,98 @@ static const struct o_dbus const dhos[] = {
 	{ "root_path=", DBUS_TYPE_STRING, 0, "RootPath" },
 	{ "extensions_path=", DBUS_TYPE_STRING, 0, "ExtensionsPath" },
 	{ "ip_forwarding=", DBUS_TYPE_BOOLEAN, 0, "IPForwarding" },
-	{ "non_local_source_routing=", DBUS_TYPE_BOOLEAN, 0, "NonLocalSourceRouting" },
-	{ "policy_filter=", DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, "PolicyFilter" },
-	{ "max_dgram_reassembly=", DBUS_TYPE_INT16, 0, "MaxDatagramReassembly" },
+	{ "non_local_source_routing=", DBUS_TYPE_BOOLEAN, 0,
+	  "NonLocalSourceRouting" },
+	{ "policy_filter=", DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32,
+	  "PolicyFilter" },
+	{ "max_dgram_reassembly=", DBUS_TYPE_INT16, 0,
+	  "MaxDatagramReassembly" },
 	{ "default_ip_ttl=", DBUS_TYPE_UINT16, 0, "DefaultIPTTL" },
-	{ "path_mtu_aging_timeout=", DBUS_TYPE_UINT32, 0, "PathMTUAgingTimeout" },
-	{ "path_mtu_plateau_table=" ,DBUS_TYPE_ARRAY, DBUS_TYPE_UINT16, "PolicyFilter"} ,
+	{ "path_mtu_aging_timeout=", DBUS_TYPE_UINT32, 0,
+	  "PathMTUAgingTimeout" },
+	{ "path_mtu_plateau_table=" ,DBUS_TYPE_ARRAY, DBUS_TYPE_UINT16,
+	  "PolicyFilter"} ,
 	{ "interface_mtu=", DBUS_TYPE_UINT16, 0, "InterfaceMTU" },
 	{ "all_subnets_local=", DBUS_TYPE_BOOLEAN, 0, "AllSubnetsLocal" },
 	{ "broadcast_address=", DBUS_TYPE_UINT32, 0, "BroadcastAddress" },
-	{ "perform_mask_discovery=", DBUS_TYPE_BOOLEAN, 0, "PerformMaskDiscovery" },
+	{ "perform_mask_discovery=", DBUS_TYPE_BOOLEAN, 0,
+	  "PerformMaskDiscovery" },
 	{ "mask_supplier=", DBUS_TYPE_BOOLEAN, 0, "MaskSupplier" },
 	{ "router_discovery=", DBUS_TYPE_BOOLEAN, 0, "RouterDiscovery" },
-	{ "router_solicitiation_address=", DBUS_TYPE_UINT32, 0, "RouterSolicationAddress" },
-	{ "trailer_encapsulation=", DBUS_TYPE_BOOLEAN, 0, "TrailerEncapsulation" },
+	{ "router_solicitiation_address=", DBUS_TYPE_UINT32, 0,
+	  "RouterSolicationAddress" },
+	{ "trailer_encapsulation=", DBUS_TYPE_BOOLEAN, 0,
+	  "TrailerEncapsulation" },
 	{ "arp_cache_timeout=", DBUS_TYPE_UINT32, 0, "ARPCacheTimeout" },
-	{ "ieee802_3_encapsulation=", DBUS_TYPE_UINT16, 0, "IEEE8023Encapsulation" },
+	{ "ieee802_3_encapsulation=", DBUS_TYPE_UINT16, 0,
+	  "IEEE8023Encapsulation" },
 	{ "default_tcp_ttl=", DBUS_TYPE_BYTE, 0, "DefaultTCPTTL" },
-	{ "tcp_keepalive_interval=", DBUS_TYPE_UINT32, 0, "TCPKeepAliveInterval" },
-	{ "tcp_keepalive_garbage=", DBUS_TYPE_BOOLEAN, 0, "TCPKeepAliveGarbage" },
+	{ "tcp_keepalive_interval=", DBUS_TYPE_UINT32, 0,
+	  "TCPKeepAliveInterval" },
+	{ "tcp_keepalive_garbage=", DBUS_TYPE_BOOLEAN, 0,
+	  "TCPKeepAliveGarbage" },
 	{ "nis_domain=", DBUS_TYPE_STRING, 0, "NISDomain" },
 	{ "nis_servers=", DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, "NISServers" },
 	{ "ntp_servers=", DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, "NTPServers" },
-	{ "vendor_encapsulated_optons=", DBUS_TYPE_STRING, 0, "VendorEncapsulatedOptions" },
-	{ "netbios_name_servers=" ,DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, "NetBIOSNameServers" },
+	{ "vendor_encapsulated_optons=", DBUS_TYPE_STRING, 0,
+	  "VendorEncapsulatedOptions" },
+	{ "netbios_name_servers=" ,DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32,
+	  "NetBIOSNameServers" },
 	{ "netbios_dd_server=", DBUS_TYPE_UINT32, 0, "NetBIOSDDServer" },
 	{ "netbios_node_type=", DBUS_TYPE_BYTE, 0, "NetBIOSNodeType" },
 	{ "netbios_scope=", DBUS_TYPE_STRING, 0, "NetBIOSScope" },
 	{ "font_servers=", DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, "FontServers" },
-	{ "x_display_manager=", DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, "XDisplayManager" },
-	{ "dhcp_requested_address=", DBUS_TYPE_UINT32, 0, "DHCPRequestedAddress" },
+	{ "x_display_manager=", DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32,
+	  "XDisplayManager" },
+	{ "dhcp_requested_address=", DBUS_TYPE_UINT32, 0,
+	  "DHCPRequestedAddress" },
 	{ "dhcp_lease_time=", DBUS_TYPE_UINT32, 0, "DHCPLeaseTime" },
-	{ "dhcp_option_overload=", DBUS_TYPE_BOOLEAN, 0, "DHCPOptionOverload" },
+	{ "dhcp_option_overload=", DBUS_TYPE_BOOLEAN, 0,
+	  "DHCPOptionOverload" },
 	{ "dhcp_message_type=", DBUS_TYPE_BYTE, 0, "DHCPMessageType" },
-	{ "dhcp_server_identifier=", DBUS_TYPE_UINT32, 0, "DHCPServerIdentifier" },
+	{ "dhcp_server_identifier=", DBUS_TYPE_UINT32, 0,
+	  "DHCPServerIdentifier" },
 	{ "dhcp_message=", DBUS_TYPE_STRING, 0, "DHCPMessage" },
-	{ "dhcp_max_message_size=", DBUS_TYPE_UINT16, 0, "DHCPMaxMessageSize" },
+	{ "dhcp_max_message_size=", DBUS_TYPE_UINT16, 0,
+	  "DHCPMaxMessageSize" },
 	{ "dhcp_renewal_time=", DBUS_TYPE_UINT32, 0, "DHCPRenewalTime" },
 	{ "dhcp_rebinding_time=", DBUS_TYPE_UINT32, 0, "DHCPRebindingTime" },
 	{ "nisplus_domain=", DBUS_TYPE_STRING, 0, "NISPlusDomain" },
-	{ "nisplus_servers=", DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, "NISPlusServers" },
+	{ "nisplus_servers=", DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32,
+	  "NISPlusServers" },
 	{ "tftp_server_name=", DBUS_TYPE_STRING, 0, "TFTPServerName" },
 	{ "bootfile_name=", DBUS_TYPE_STRING, 0, "BootFileName" },
-	{ "mobile_ip_home_agent=", DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, "MobileIPHomeAgent" },
+	{ "mobile_ip_home_agent=", DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32,
+	  "MobileIPHomeAgent" },
 	{ "smtp_server=", DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, "SMTPServer" },
 	{ "pop_server=", DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, "POPServer" },
 	{ "nntp_server=", DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, "NNTPServer" },
 	{ "www_server=", DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, "WWWServer" },
-	{ "finger_server=", DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, "FingerServer" },
+	{ "finger_server=", DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32,
+	  "FingerServer" },
 	{ "irc_server=", DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, "IRCServer" },
-	{ "streettalk_server=", DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, "StreetTalkServer" },
-	{ "streettalk_directory_assistance_server=", DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, "StreetTalkDirectoryAssistanceServer" },
+	{ "streettalk_server=", DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32,
+	  "StreetTalkServer" },
+	{ "streettalk_directory_assistance_server=", DBUS_TYPE_ARRAY,
+	  DBUS_TYPE_UINT32, "StreetTalkDirectoryAssistanceServer" },
 	{ "user_class=", DBUS_TYPE_STRING, 0, "UserClass" },
 	{ "new_fqdn_name=", DBUS_TYPE_STRING, 0, "FQDNName" },
 	{ "nds_servers=", DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, "NDSServers" },
 	{ "nds_tree_name=", DBUS_TYPE_STRING, 0, "NDSTreeName" },
 	{ "nds_context=", DBUS_TYPE_STRING, 0, "NDSContext" },
-	{ "bcms_controller_names=", DBUS_TYPE_STRING, 0, "BCMSControllerNames" },
-	{ "client_last_transaction_time=", DBUS_TYPE_UINT32, 0, "ClientLastTransactionTime" },
+	{ "bcms_controller_names=", DBUS_TYPE_STRING, 0,
+	  "BCMSControllerNames" },
+	{ "client_last_transaction_time=", DBUS_TYPE_UINT32, 0,
+	  "ClientLastTransactionTime" },
 	{ "associated_ip=", DBUS_TYPE_UINT32, 0, "AssociatedIP" },
 	{ "uap_servers=", DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, "UAPServers" },
-	{ "netinfo_server_address=", DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, "NetinfoServerAddress" },
+	{ "netinfo_server_address=", DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32,
+	  "NetinfoServerAddress" },
 	{ "netinfo_server_tag=", DBUS_TYPE_STRING, 0, "NetinfoServerTag" },
 	{ "default_url=", DBUS_TYPE_STRING, 0, "DefaultURL" },
 	{ "subnet_selection=", DBUS_TYPE_UINT32, 0, "SubnetSelection" },
-	{ "domain_search=", DBUS_TYPE_ARRAY, DBUS_TYPE_STRING, "DomainSearch" },
+	{ "domain_search=", DBUS_TYPE_ARRAY, DBUS_TYPE_STRING,
+	  "DomainSearch" },
 	{ NULL, 0, 0, NULL }
 };
 
@@ -451,6 +497,116 @@ dhcpcd_iface_command(DBusConnection *con, DBusMessage *msg,
 }
 
 static DBusHandlerResult
+dhcpcd_getconfig(DBusConnection *con, DBusMessage *msg)
+{
+	DBusMessage *reply;
+	DBusMessageIter args, array, item;
+	DBusError err;
+	const char ns[] = "";
+	char *block, *name;
+	const char *p;
+	struct option_value *opts;
+	const struct option_value *opt;
+
+	dbus_error_init(&err);
+	if (!dbus_message_get_args(msg, &err,
+		DBUS_TYPE_STRING, &block,
+		DBUS_TYPE_STRING, &name,
+		DBUS_TYPE_INVALID))
+		return return_dbus_error(con, msg, S_EINVAL,
+		    "No block or name specified");
+
+	errno = 0;
+	opts = dhcpcd_read_options(*block == '\0' ? NULL : block,
+				   *name == '\0' ? NULL : name);
+	if (opts == NULL && errno)
+		return return_dbus_error(con, msg, S_EINVAL,
+		    "dhcpcd_read_config: %s", strerror(errno));
+	
+	reply = dbus_message_new_method_return(msg);
+	dbus_message_iter_init_append(reply, &args);
+	dbus_message_iter_open_container(&args, DBUS_TYPE_ARRAY,
+	    DBUS_STRUCT_BEGIN_CHAR_AS_STRING
+	    DBUS_TYPE_STRING_AS_STRING
+	    DBUS_TYPE_STRING_AS_STRING
+	    DBUS_STRUCT_END_CHAR_AS_STRING,
+	    &array);
+	for (opt = opts; opt; opt = opt->next) {
+		dbus_message_iter_open_container(&array,
+		    DBUS_TYPE_STRUCT, NULL, &item);
+		dbus_message_iter_append_basic(&item,
+		    DBUS_TYPE_STRING, &opt->option);
+		if (opt->value == NULL)
+			p = ns;
+		else
+			p = opt->value;
+		dbus_message_iter_append_basic(&item,
+		    DBUS_TYPE_STRING, &p);
+		dbus_message_iter_close_container(&array, &item);
+	}
+	dbus_message_iter_close_container(&args, &array);
+	dbus_connection_send(con, reply, NULL);
+	dbus_message_unref(reply);
+	free_option_values(opts);
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
+static DBusHandlerResult
+dhcpcd_setconfig(DBusConnection *con, DBusMessage *msg)
+{
+	DBusMessage *reply;
+	DBusError err;
+	DBusMessageIter args, array, item;
+	struct option_value *opts, *opt;
+	char *block, *name;
+
+	if (!dbus_message_get_args(msg, &err,
+		DBUS_TYPE_STRING, &block,
+		DBUS_TYPE_STRING, &name,
+		DBUS_TYPE_INVALID))
+		return return_dbus_error(con, msg, S_EINVAL,
+		    "No block or name specified");
+
+	opts = opt = NULL;
+	dbus_message_iter_init(msg, &args);
+	if (dbus_message_iter_get_arg_type(&array) != DBUS_TYPE_ARRAY)
+		return_dbus_error(con, msg, S_EINVAL,
+		    "No configuration array");
+	dbus_message_iter_recurse(&args, &array);
+	while (dbus_message_iter_get_arg_type(&array) == DBUS_TYPE_ARRAY) {
+		dbus_message_iter_recurse(&array, &item);
+		if (opt == NULL)
+			opts = opt = malloc(sizeof(*opt));
+		else {
+			opt->next = malloc(sizeof(*opt));
+			opt = opt->next;
+		}
+		if (opt == NULL) {
+			free_option_values(opts);
+			return return_dbus_error(con, msg, S_EINVAL, "malloc");
+		}
+		opt->next = NULL;
+		dbus_message_iter_get_basic(&item, &opt->option);
+		dbus_message_iter_next(&item);
+		dbus_message_iter_get_basic(&item, &opt->value);
+		if (*opt->value == '\0')
+			opt->value = NULL;
+		dbus_message_iter_next(&array);
+	}
+	dhcpcd_write_options(*block == '\0' ? NULL : block,
+	    *name == '\0' ? NULL : name, opts);
+	while (opts) {
+		opt = opts->next;
+		free(opts);
+		opts = opt;
+	}
+	reply = dbus_message_new_method_return(msg);
+	dbus_connection_send(con, reply, NULL);
+	dbus_message_unref(reply);
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
+static DBusHandlerResult
 msg_handler(DBusConnection *con, DBusMessage *msg, _unused void *data)
 {
 	if (dbus_message_is_method_call(msg,
@@ -480,6 +636,12 @@ msg_handler(DBusConnection *con, DBusMessage *msg, _unused void *data)
 	else if (dbus_message_is_method_call(msg, DHCPCD_SERVICE,
 		"Stop"))
 		return dhcpcd_iface_command(con, msg, "--exit");
+	else if (dbus_message_is_method_call(msg, DHCPCD_SERVICE,
+		"GetConfig"))
+		return dhcpcd_getconfig(con, msg);
+	else if (dbus_message_is_method_call(msg, DHCPCD_SERVICE,
+		"SetConfig"))
+		return dhcpcd_setconfig(con, msg);
 	return wpa_dbus_handler(con, msg);
 }
 

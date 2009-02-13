@@ -31,8 +31,6 @@
 
 int wpa_close(const char *);
 ssize_t wpa_cmd(const char *, const char *, char *, ssize_t);
-size_t wpa_add_listeners(struct pollfd *);
-void wpa_check_listeners(struct pollfd *, size_t);
 int wpa_configure(const struct dhcpcd_config *);
 
 #endif

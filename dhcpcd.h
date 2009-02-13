@@ -28,27 +28,33 @@
 #ifndef DHCPCD_H
 #define DHCPCD_H
 
-#include <poll.h>
-
 extern char *dhcpcd_version;
 extern const char *dhcpcd_status;
+
+struct option_value {
+	char *option;
+	char *value;
+	struct option_value *next;
+};
 
 struct dhcpcd_config {
 	const char *iface;
 	char *data;
 	size_t data_len;
-	struct dhcpcd_config *next;
 	struct dhcpcd_config *prev;
+	struct dhcpcd_config *next;
 };
 extern struct dhcpcd_config *dhcpcd_configs;
 
 int set_nonblock(int);
 void dhcpcd_init(void *);
 int dhcpcd_close(void);
-struct dhcpcd_config *dhcpcd_get_config(const char *iface);
+struct dhcpcd_config *dhcpcd_get_config(const char *);
 const char *dhcpcd_get_value(const struct dhcpcd_config *, const char *);
 ssize_t dhcpcd_command(const char *, char **);
-size_t dhcpcd_add_listeners(struct pollfd *);
-void dhcpcd_check_listeners(struct pollfd *, size_t);
+void free_option_values(struct option_value *);
+struct option_value *dhcpcd_read_options(const char *, const char *);
+int dhcpcd_write_options(const char *, const char *,
+    const struct option_value *);
 
 #endif

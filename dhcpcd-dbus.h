@@ -27,8 +27,6 @@
 #ifndef DHCPCD_DBUS_H
 #define DHCPCD_DBUS_H
 
-#include <poll.h>
-
 #include <dbus/dbus.h>
 
 #include "dhcpcd.h"
@@ -41,8 +39,6 @@ return_dbus_error(DBusConnection *,
 
 int dhcpcd_dbus_init(void);
 int dhcpcd_dbus_close(void);
-size_t dhcpcd_dbus_add_listeners(struct pollfd *);
-void dhcpcd_dbus_check_listeners(struct pollfd *, size_t);
 void dhcpcd_dbus_configure(const struct dhcpcd_config *);
 void dhcpcd_dbus_signal_status(const char *);
 
