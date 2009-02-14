@@ -560,6 +560,7 @@ dhcpcd_setconfig(DBusConnection *con, DBusMessage *msg)
 	struct option_value *opts, *opt;
 	char *block, *name;
 
+	dbus_error_init(&err);
 	if (!dbus_message_get_args(msg, &err,
 		DBUS_TYPE_STRING, &block,
 		DBUS_TYPE_STRING, &name,
@@ -569,11 +570,17 @@ dhcpcd_setconfig(DBusConnection *con, DBusMessage *msg)
 
 	opts = opt = NULL;
 	dbus_message_iter_init(msg, &args);
-	if (dbus_message_iter_get_arg_type(&array) != DBUS_TYPE_ARRAY)
-		return_dbus_error(con, msg, S_EINVAL,
+	dbus_message_iter_next(&args);
+	dbus_message_iter_next(&args);
+	if (dbus_message_iter_get_arg_type(&args) != DBUS_TYPE_ARRAY)
+		return return_dbus_error(con, msg, S_EINVAL,
 		    "No configuration array");
+	if (block)
+		syslog(LOG_INFO, "saving configuration: %s %s", block, name);
+	else
+		syslog(LOG_INFO, "saving global configuration");
 	dbus_message_iter_recurse(&args, &array);
-	while (dbus_message_iter_get_arg_type(&array) == DBUS_TYPE_ARRAY) {
+	while (dbus_message_iter_get_arg_type(&array) != DBUS_TYPE_INVALID) {
 		dbus_message_iter_recurse(&array, &item);
 		if (opt == NULL)
 			opts = opt = malloc(sizeof(*opt));
