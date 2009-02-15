@@ -40,6 +40,9 @@ static void
 cleanup(void)
 {
 	wpa_close(NULL);
+#ifdef DEBUG_MEMORY
+	dhcpcd_close();
+#endif
 }
 
 static void

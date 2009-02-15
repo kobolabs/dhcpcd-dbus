@@ -170,10 +170,8 @@ _dhcpcd_command(int fd, const char *cmd, char **buffer)
 		return bytes;
 	memcpy(&len, c, sizeof(ssize_t));
 	*buffer = malloc(len + 1);
-	if (*buffer == NULL) {
-		syslog(LOG_ERR, "malloc: %m");
-		exit(EXIT_FAILURE);
-	}
+	if (*buffer == NULL)
+		return -1;
 	bytes = read(fd, *buffer, len);
 	if (bytes != -1 && bytes < len)
 		*buffer[bytes] = '\0';
@@ -420,6 +418,7 @@ free_configs(void)
 
 	while (dhcpcd_configs != NULL) {
 		c = dhcpcd_configs->next;
+		free(dhcpcd_configs->data);
 		free(dhcpcd_configs);
 		dhcpcd_configs = c;
 	}
@@ -657,6 +656,14 @@ dhcpcd_close(void)
 	retval |= shutdown(listen_fd, SHUT_RDWR);
 	listen_fd = -1;
 	free_configs();
+	free(cffile);
+	cffile = NULL;
+#ifdef DEBUG_MEMORY
+	free(dhcpcd_version);
+	dhcpcd_version = NULL;
+	free(order);
+	order = NULL;
+#endif
 	dhcpcd_status = "down";
 	dhcpcd_dbus_signal_status(dhcpcd_status);
 	return retval;
