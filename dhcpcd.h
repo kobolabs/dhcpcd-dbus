@@ -56,5 +56,6 @@ void free_option_values(struct option_value *);
 struct option_value *dhcpcd_read_options(const char *, const char *);
 int dhcpcd_write_options(const char *, const char *,
     const struct option_value *);
+char **dhcpcd_list_blocks(const char *);
 
 #endif

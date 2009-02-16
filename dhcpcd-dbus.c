@@ -69,6 +69,10 @@ static const char *dhcpcd_introspection_xml =
 	"    <method name=\"Stop\">\n"
 	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
 	"    </method>\n"
+	"    <method name=\"GetConfigBlocks\">\n"
+	"      <arg name=\"block\" direction=\"in\" type=\"s\"/>\n"
+	"      <arg name=\"names\" direction=\"out\" type=\"as\"/>\n"
+	"    </method>\n"
 	"    <method name=\"GetConfig\">\n"
 	"      <arg name=\"block\" direction=\"in\" type=\"s\"/>\n"
 	"      <arg name=\"name\" direction=\"in\" type=\"s\"/>\n"
@@ -497,6 +501,47 @@ dhcpcd_iface_command(DBusConnection *con, DBusMessage *msg,
 }
 
 static DBusHandlerResult
+dhcpcd_getconfig_blocks(DBusConnection *con, DBusMessage *msg)
+{
+	DBusMessage *reply;
+	DBusMessageIter args, array;
+	DBusError err;
+	char *block;
+	char **blocks, **bp;
+
+	dbus_error_init(&err);
+	if (!dbus_message_get_args(msg, &err,
+		DBUS_TYPE_STRING, &block,
+		DBUS_TYPE_INVALID))
+		return return_dbus_error(con, msg, S_EINVAL,
+		    "No block specified");
+
+	errno = 0;
+	blocks = dhcpcd_list_blocks(block);
+	if (blocks == NULL && errno)
+		return return_dbus_error(con, msg, S_EINVAL,
+		    "dhcpcd_list_blocks: %s", strerror(errno));
+	
+	reply = dbus_message_new_method_return(msg);
+	dbus_message_iter_init_append(reply, &args);
+	dbus_message_iter_open_container(&args, DBUS_TYPE_ARRAY,
+	    DBUS_TYPE_STRING_AS_STRING,
+	    &array);
+	if (blocks)
+		for (bp = blocks; *bp; bp++)
+			dbus_message_iter_append_basic(&array,
+			    DBUS_TYPE_STRING, bp);
+	dbus_message_iter_close_container(&args, &array);
+	dbus_connection_send(con, reply, NULL);
+	dbus_message_unref(reply);
+	if (blocks)
+		for (bp = blocks; *bp; bp++)
+			free(*bp);
+	free(blocks);
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
+static DBusHandlerResult
 dhcpcd_getconfig(DBusConnection *con, DBusMessage *msg)
 {
 	DBusMessage *reply;
@@ -643,6 +688,9 @@ msg_handler(DBusConnection *con, DBusMessage *msg, _unused void *data)
 	else if (dbus_message_is_method_call(msg, DHCPCD_SERVICE,
 		"Stop"))
 		return dhcpcd_iface_command(con, msg, "--exit");
+	else if (dbus_message_is_method_call(msg, DHCPCD_SERVICE,
+		"GetConfigBlocks"))
+		return dhcpcd_getconfig_blocks(con, msg);
 	else if (dbus_message_is_method_call(msg, DHCPCD_SERVICE,
 		"GetConfig"))
 		return dhcpcd_getconfig(con, msg);

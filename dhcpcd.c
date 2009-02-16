@@ -438,9 +438,13 @@ free_option_values(struct option_value *o)
 	}
 }
 
+#define ACT_READ  (1 << 0)
+#define ACT_WRITE (1 << 1)
+#define ACT_LIST  (1 << 2)
+
 static struct option_value *
-_options(int rw, const char *block, const char *name,
-    const struct option_value *no)
+_options(int action, const char *block, const char *name,
+    const struct option_value *no, char ***list)
 {
 	FILE *fp;
 	struct option_value *options, *o;
@@ -454,7 +458,7 @@ _options(int rw, const char *block, const char *name,
 	if (fp == NULL)
 		return NULL;
 	options = o = NULL;
-	skip = block ? 1 : 0;
+	skip = block && !(action & ACT_LIST) ? 1 : 0;
 	buf = NULL;
 	buf_len = buf_size = 0;
 	while ((line = get_line(fp))) {
@@ -467,40 +471,53 @@ _options(int rw, const char *block, const char *name,
 			    *(p - 1) != '\\')
 				*p-- = '\0';
 		}
-		/* Start of a block, skip if not ours */
-		if (strcmp(option, "interface") == 0 ||
-		    strcmp(option, "ssid") == 0)
-		{
-			if (block && name && line &&
-			    strcmp(option, block) == 0 &&
-			    strcmp(line, name) == 0)
+		if (action & ACT_LIST) {
+			if (strcmp(option, block) == 0)
 				skip = 0;
 			else
 				skip = 1;
-			continue;
- 		}
-		if (skip && rw) {
-			if (buf_len + 1 > buf_size) {
+		} else {
+			/* Start of a block, skip if not ours */
+			if (strcmp(option, "interface") == 0 ||
+			    strcmp(option, "ssid") == 0)
+			{
+				if (block && name && line &&
+				    strcmp(option, block) == 0 &&
+				    strcmp(line, name) == 0)
+					skip = 0;
+				else
+					skip = 1;
+				continue;
+			}
+		}
+		if ((action & ACT_WRITE && skip) ||
+		    (action & ACT_LIST && !skip))
+		{
+			if (buf_len + 2 > buf_size) {
 				buf_size += 32;
 				nbuf = realloc(buf, sizeof(char *) * buf_size);
 				if (nbuf == NULL)
 					goto exit;
 				buf = nbuf;
 			}
-			if (line && *line != '\0') {
+			if (action & ACT_WRITE && line && *line != '\0') {
 				len = strlen(option) + strlen(line) + 2;
 				buf[buf_len] = malloc(len);
 				if (buf[buf_len] == NULL)
 					goto exit;
-				snprintf(buf[buf_len], len, "%s %s", option, line);
+				snprintf(buf[buf_len], len,
+				    "%s %s", option, line);
 			} else {
-				buf[buf_len] = strdup(option);
+				if (action & ACT_LIST)
+					buf[buf_len] = strdup(line);
+				else
+					buf[buf_len] = strdup(option);
 				if (buf[buf_len] == NULL)
 					goto exit;
 			}
 			buf_len++;
 		}
-		if (skip)
+		if (skip || action & ACT_LIST)
 			continue;
 		if (*option == '\0' || *option == '#' || *option == ';')
 			continue;
@@ -526,7 +543,7 @@ _options(int rw, const char *block, const char *name,
 		}
 	}
 
-	if (rw) {
+	if (action & ACT_WRITE) {
 		fp = freopen(cffile, "w", fp);
 		if (fp == NULL)
 			goto exit;
@@ -547,32 +564,48 @@ _options(int rw, const char *block, const char *name,
 exit:
 	if (fp != NULL)
 		fclose(fp);
-	for (i = 0; i < buf_len; i++)
-		free(buf[i]);
-	free(buf);
+	if (action & ACT_LIST) {
+		if (buf)
+			buf[buf_len] = NULL;
+		*list = buf;
+	} else {
+		for (i = 0; i < buf_len; i++)
+			free(buf[i]);
+		free(buf);
+	}
 	free_option_values(options);
 	return options;
 }
 
 struct option_value *
-dhcpcd_read_options(const char *iface, const char *ssid)
+dhcpcd_read_options(const char *block, const char *name)
 {
-	return _options(0, iface, ssid, NULL);
+	return _options(ACT_READ, block, name, NULL, NULL);
 }
 
 int
-dhcpcd_write_options(const char *iface, const char *ssid,
+dhcpcd_write_options(const char *block, const char *name,
     const struct option_value *opts)
 {
 	int serrno;
 
 	serrno = errno;
 	errno = 0;
-	_options(1, iface, ssid, opts);
+	_options(ACT_WRITE, block, name, opts, NULL);
 	if (errno)
 		return -1;
 	errno = serrno;
 	return 0;
+}
+
+char **
+dhcpcd_list_blocks(const char *block)
+{
+	char **list;
+
+	list = NULL;
+	_options(ACT_LIST, block, NULL, NULL, &list);
+	return list;
 }
 
 void
