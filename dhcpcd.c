@@ -451,7 +451,7 @@ _options(int action, const char *block, const char *name,
 	const struct option_value *co;
 	char *line, *option, *p;
 	char **buf, **nbuf;
-	int skip;
+	int skip, free_opts;
 	size_t len, buf_size, buf_len, i;
 
 	fp = fopen(cffile, "r");
@@ -461,6 +461,7 @@ _options(int action, const char *block, const char *name,
 	skip = block && !(action & ACT_LIST) ? 1 : 0;
 	buf = NULL;
 	buf_len = buf_size = 0;
+	free_opts = 1;
 	while ((line = get_line(fp))) {
 		option = strsep(&line, " \t");
 		/* Trim trailing whitespace */
@@ -532,9 +533,10 @@ _options(int action, const char *block, const char *name,
 		o->next = NULL;
 		o->option = strdup(option);
 		if (o->option == NULL) {
+			o->value = NULL;
 			goto exit;
 		}
-		if (line == NULL)
+		if (line == NULL || *line == '\0')
 			o->value = NULL;
 		else {
 			o->value = strdup(line);
@@ -561,6 +563,8 @@ _options(int action, const char *block, const char *name,
 		}
 	}
 
+	free_opts = 0;
+
 exit:
 	if (fp != NULL)
 		fclose(fp);
@@ -573,7 +577,8 @@ exit:
 			free(buf[i]);
 		free(buf);
 	}
-	free_option_values(options);
+	if (free_opts)
+		free_option_values(options);
 	return options;
 }
 
