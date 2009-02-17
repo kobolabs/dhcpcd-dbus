@@ -566,7 +566,7 @@ dhcpcd_getconfig(DBusConnection *con, DBusMessage *msg)
 
 	errno = 0;
 	opts = dhcpcd_read_options(*block == '\0' ? NULL : block,
-				   *name == '\0' ? NULL : name);
+	    *name == '\0' ? NULL : name);
 	if (opts == NULL && errno)
 		return return_dbus_error(con, msg, S_EINVAL,
 		    "dhcpcd_read_config: %s", strerror(errno));
