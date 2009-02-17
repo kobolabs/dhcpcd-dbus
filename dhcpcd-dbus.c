@@ -517,7 +517,10 @@ dhcpcd_getconfig_blocks(DBusConnection *con, DBusMessage *msg)
 		    "No block specified");
 
 	errno = 0;
-	blocks = dhcpcd_list_blocks(block);
+	if (*block == '\0')
+		blocks = NULL;
+	else
+		blocks = dhcpcd_list_blocks(block);
 	if (blocks == NULL && errno)
 		return return_dbus_error(con, msg, S_EINVAL,
 		    "dhcpcd_list_blocks: %s", strerror(errno));
