@@ -623,7 +623,7 @@ dhcpcd_setconfig(DBusConnection *con, DBusMessage *msg)
 	if (dbus_message_iter_get_arg_type(&args) != DBUS_TYPE_ARRAY)
 		return return_dbus_error(con, msg, S_EINVAL,
 		    "No configuration array");
-	if (block)
+	if (block && *block != '\0')
 		syslog(LOG_INFO, "saving configuration: %s %s", block, name);
 	else
 		syslog(LOG_INFO, "saving global configuration");
