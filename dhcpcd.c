@@ -425,15 +425,21 @@ free_configs(void)
 }
 
 void
+free_option_value(struct option_value *o)
+{
+	free(o->option);
+	free(o->value);
+	free(o);
+}
+
+void
 free_option_values(struct option_value *o)
 {
 	struct option_value *p;
 
 	while (o != NULL) {
 		p = o->next;
-		free(o->option);
-		free(o->value);
-		free(o);
+		free_option_value(o);
 		o = p;
 	}
 }
@@ -488,7 +494,8 @@ _options(int action, const char *block, const char *name,
 					skip = 0;
 				else
 					skip = 1;
-				continue;
+				if (!(action & ACT_WRITE))
+					continue;
 			}
 		}
 		if ((action & ACT_WRITE && skip) ||
@@ -549,21 +556,25 @@ _options(int action, const char *block, const char *name,
 		fp = freopen(cffile, "w", fp);
 		if (fp == NULL)
 			goto exit;
+		skip = 0;
 		for (i = 0; i < buf_len; i++) {
 			fputs(buf[i], fp);
 			fputc('\n', fp);
+			skip = buf[i][0] == '\0' ? 1 : 0;
 		}
-		if (no && block)
-			fprintf(fp, "\n%s %s\n", block, name);
+		if (no && block) {
+			if (!skip)
+				fputc('\n', fp);
+			fprintf(fp, "%s %s\n", block, name);
+		}
 		for (co = no; co; co = co->next) {
 			if (co->value)
 				fprintf(fp, "%s %s\n", co->option, co->value);
 			else
 				fprintf(fp, "%s\n", co->option);
 		}
-	}
-
-	free_opts = 0;
+	} else
+		free_opts = 0;
 
 exit:
 	if (fp != NULL)
@@ -577,8 +588,10 @@ exit:
 			free(buf[i]);
 		free(buf);
 	}
-	if (free_opts)
+	if (free_opts) {
 		free_option_values(options);
+		options = NULL;
+	}
 	return options;
 }
 

@@ -52,6 +52,7 @@ int dhcpcd_close(void);
 struct dhcpcd_config *dhcpcd_get_config(const char *);
 const char *dhcpcd_get_value(const struct dhcpcd_config *, const char *);
 ssize_t dhcpcd_command(const char *, char **);
+void free_option_value(struct option_value *);
 void free_option_values(struct option_value *);
 struct option_value *dhcpcd_read_options(const char *, const char *);
 int dhcpcd_write_options(const char *, const char *,
