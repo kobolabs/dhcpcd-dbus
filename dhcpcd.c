@@ -351,7 +351,7 @@ read_config(int fd)
 	rbuf = malloc(len + 1);
 	if (rbuf == NULL) {
 		syslog(LOG_ERR, "malloc: %m");
-		exit(EXIT_FAILURE);
+		return NULL;
 	}
 	bytes = read(fd, rbuf, len);
 	if (bytes == 0 || bytes == -1) {
