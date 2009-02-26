@@ -45,50 +45,50 @@
 DBusConnection *connection;
 
 static const char *dhcpcd_introspection_xml =
-	"    <method name=\"GetVersion\">\n"
-	"      <arg name=\"version\" direction=\"out\" type=\"s\"/>\n"
-	"    </method>\n"
-	"    <method name=\"GetDhcpcdVersion\">\n"
-	"      <arg name=\"version\" direction=\"out\" type=\"s\"/>\n"
-	"    </method>\n"
-	"    <method name=\"ListInterfaces\">\n"
-	"      <arg name=\"interfaces\" direction=\"out\" type=\"as\"/>\n"
-	"    </method>\n"
-	"    <method name=\"GetInterfaces\">\n"
-	"      <arg name=\"interfaces\" direction=\"out\" type=\"a{sa{sv}}\"/>\n"
-	"    </method>\n"
-	"    <method name=\"GetStatus\">\n"
-	"      <arg name=\"Status\" direction=\"out\" type=\"s\"/>\n"
-	"    </method>\n"
-	"    <method name=\"Rebind\">\n"
-	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
-	"    </method>\n"
-	"    <method name=\"Release\">\n"
-	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
-	"    </method>\n"
-	"    <method name=\"Stop\">\n"
-	"      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
-	"    </method>\n"
-	"    <method name=\"GetConfigBlocks\">\n"
-	"      <arg name=\"block\" direction=\"in\" type=\"s\"/>\n"
-	"      <arg name=\"names\" direction=\"out\" type=\"as\"/>\n"
-	"    </method>\n"
-	"    <method name=\"GetConfig\">\n"
-	"      <arg name=\"block\" direction=\"in\" type=\"s\"/>\n"
-	"      <arg name=\"name\" direction=\"in\" type=\"s\"/>\n"
-	"      <arg name=\"config\" direction=\"out\" type=\"aa(ss)\"/>\n"
-	"    </method>\n"
-	"    <method name=\"SetConfig\">\n"
-	"      <arg name=\"block\" direction=\"in\" type=\"s\"/>\n"
-	"      <arg name=\"name\" direction=\"in\" type=\"s\"/>\n"
-	"      <arg name=\"config\" direction=\"in\" type=\"aa(ss)\"/>\n"
-	"    </method>\n"
-	"    <signal name=\"Event\">\n"
-	"      <arg name=\"configuration\" type=\"a{sv}\">\n"
-	"    </signal>\n"
-	"    <signal name=\"StatusChanged\">\n"
-	"      <arg name=\"status\" type=\"s\">\n"
-	"    </signal>\n";
+    "    <method name=\"GetVersion\">\n"
+    "      <arg name=\"version\" direction=\"out\" type=\"s\"/>\n"
+    "    </method>\n"
+    "    <method name=\"GetDhcpcdVersion\">\n"
+    "      <arg name=\"version\" direction=\"out\" type=\"s\"/>\n"
+    "    </method>\n"
+    "    <method name=\"ListInterfaces\">\n"
+    "      <arg name=\"interfaces\" direction=\"out\" type=\"as\"/>\n"
+    "    </method>\n"
+    "    <method name=\"GetInterfaces\">\n"
+    "      <arg name=\"interfaces\" direction=\"out\" type=\"a{sa{sv}}\"/>\n"
+    "    </method>\n"
+    "    <method name=\"GetStatus\">\n"
+    "      <arg name=\"Status\" direction=\"out\" type=\"s\"/>\n"
+    "    </method>\n"
+    "    <method name=\"Rebind\">\n"
+    "      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
+    "    </method>\n"
+    "    <method name=\"Release\">\n"
+    "      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
+    "    </method>\n"
+    "    <method name=\"Stop\">\n"
+    "      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
+    "    </method>\n"
+    "    <method name=\"GetConfigBlocks\">\n"
+    "      <arg name=\"block\" direction=\"in\" type=\"s\"/>\n"
+    "      <arg name=\"names\" direction=\"out\" type=\"as\"/>\n"
+    "    </method>\n"
+    "    <method name=\"GetConfig\">\n"
+    "      <arg name=\"block\" direction=\"in\" type=\"s\"/>\n"
+    "      <arg name=\"name\" direction=\"in\" type=\"s\"/>\n"
+    "      <arg name=\"config\" direction=\"out\" type=\"aa(ss)\"/>\n"
+    "    </method>\n"
+    "    <method name=\"SetConfig\">\n"
+    "      <arg name=\"block\" direction=\"in\" type=\"s\"/>\n"
+    "      <arg name=\"name\" direction=\"in\" type=\"s\"/>\n"
+    "      <arg name=\"config\" direction=\"in\" type=\"aa(ss)\"/>\n"
+    "    </method>\n"
+    "    <signal name=\"Event\">\n"
+    "      <arg name=\"configuration\" type=\"a{sv}\">\n"
+    "    </signal>\n"
+    "    <signal name=\"StatusChanged\">\n"
+    "      <arg name=\"status\" type=\"s\">\n"
+    "    </signal>\n";
 
 static const struct o_dbus const dhos[] = {
 	{ "interface=", DBUS_TYPE_STRING, 0, "Interface" },
@@ -264,8 +264,8 @@ append_config(DBusMessageIter *iter,
 }
 
 DBusHandlerResult _printf(4, 5)
-return_dbus_error(DBusConnection *con, DBusMessage *msg,
-    const char *name, const char *fmt, ...)
+	return_dbus_error(DBusConnection *con, DBusMessage *msg,
+	    const char *name, const char *fmt, ...)
 {
 	char buffer[1024];
 	DBusMessage *reply;
@@ -353,20 +353,20 @@ dhcpcd_dbus_configure(const struct dhcpcd_config *c)
 }
 
 static const char *introspection_header_xml =
-	"<!DOCTYPE node PUBLIC \"-//freedesktop//"
-	"DTD D-BUS Object Introspection 1.0//EN\"\n"
-	"http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd\";>\n"
-	"<node name=\"" DHCPCD_PATH "\">\n"
-	"  <interface name=\"org.freedesktop.DBus.Introspectable\">\n"
-	"    <method name=\"Introspect\">\n"
-	"      <arg name=\"data\" direction=\"out\" type=\"s\"/>\n"
-	"    </method>\n"
-	"  </interface>\n"
-	"  <interface name=\"" DHCPCD_SERVICE "\">\n";
+    "<!DOCTYPE node PUBLIC \"-//freedesktop//"
+    "DTD D-BUS Object Introspection 1.0//EN\"\n"
+    "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd\";>\n"
+    "<node name=\"" DHCPCD_PATH "\">\n"
+    "  <interface name=\"org.freedesktop.DBus.Introspectable\">\n"
+    "    <method name=\"Introspect\">\n"
+    "      <arg name=\"data\" direction=\"out\" type=\"s\"/>\n"
+    "    </method>\n"
+    "  </interface>\n"
+    "  <interface name=\"" DHCPCD_SERVICE "\">\n";
 
 static const char *introspection_footer_xml =
-	"  </interface>\n"
-	"</node>\n";
+    "  </interface>\n"
+    "</node>\n";
 
 static DBusHandlerResult
 introspect(DBusConnection *con, DBusMessage *msg)
@@ -376,9 +376,9 @@ introspect(DBusConnection *con, DBusMessage *msg)
 	size_t len;
 
 	len = strlen(introspection_header_xml) +
-		strlen(dhcpcd_introspection_xml) +
-		strlen(wpa_introspection_xml) +
-		strlen(introspection_footer_xml) + 1;
+	    strlen(dhcpcd_introspection_xml) +
+	    strlen(wpa_introspection_xml) +
+	    strlen(introspection_footer_xml) + 1;
 	xml = malloc(len);
 	if (xml == NULL)
 		return DBUS_HANDLER_RESULT_HANDLED;
