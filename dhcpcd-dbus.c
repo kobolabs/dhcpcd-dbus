@@ -41,6 +41,7 @@
 #include "wpa-dbus.h"
 
 #define S_EINVAL	DHCPCD_SERVICE ".InvalidArgument"
+#define S_ARGS		"Not enough arguments"
 
 DBusConnection *connection;
 
@@ -82,6 +83,23 @@ static const char *dhcpcd_introspection_xml =
     "      <arg name=\"block\" direction=\"in\" type=\"s\"/>\n"
     "      <arg name=\"name\" direction=\"in\" type=\"s\"/>\n"
     "      <arg name=\"config\" direction=\"in\" type=\"aa(ss)\"/>\n"
+    "    </method>\n"
+    "    <method name=\"GetConfigValue\">\n"
+    "      <arg name=\"block\" direction=\"in\" type=\"s\"/>\n"
+    "      <arg name=\"name\" direction=\"in\" type=\"s\"/>\n"
+    "      <arg name=\"option\" direction=\"in\" type=\"s\">\n"
+    "      <arg name=\"value\" direction=\"out\" type=\"s\"/>\n"
+    "    </method>\n"
+    "    <method name=\"SetConfigValue\">\n"
+    "      <arg name=\"block\" direction=\"in\" type=\"s\"/>\n"
+    "      <arg name=\"name\" direction=\"in\" type=\"s\"/>\n"
+    "      <arg name=\"option\" direction=\"in\" type=\"s\">\n"
+    "      <arg name=\"value\" direction=\"in\" type=\"s\"/>\n"
+    "    </method>\n"
+    "    <method name=\"RemoveConfigOption\">\n"
+    "      <arg name=\"block\" direction=\"in\" type=\"s\"/>\n"
+    "      <arg name=\"name\" direction=\"in\" type=\"s\"/>\n"
+    "      <arg name=\"option\" direction=\"in\" type=\"s\">\n"
     "    </method>\n"
     "    <signal name=\"Event\">\n"
     "      <arg name=\"configuration\" type=\"a{sv}\">\n"
@@ -488,8 +506,7 @@ dhcpcd_iface_command(DBusConnection *con, DBusMessage *msg,
 	dbus_error_init(&err);
 	if (!dbus_message_get_args(msg, &err,
 		DBUS_TYPE_STRING, &s, DBUS_TYPE_INVALID))
-		return return_dbus_error(con, msg, S_EINVAL,
-		    "No interface specified");
+		return return_dbus_error(con, msg, S_EINVAL, S_ARGS);
 
 	snprintf(cmd, sizeof(cmd), "dhcpcd %s %s", command, s);
 	dhcpcd_command(cmd, NULL);
@@ -513,8 +530,7 @@ dhcpcd_getconfig_blocks(DBusConnection *con, DBusMessage *msg)
 	if (!dbus_message_get_args(msg, &err,
 		DBUS_TYPE_STRING, &block,
 		DBUS_TYPE_INVALID))
-		return return_dbus_error(con, msg, S_EINVAL,
-		    "No block specified");
+		return return_dbus_error(con, msg, S_EINVAL, S_ARGS);
 
 	errno = 0;
 	if (*block == '\0')
@@ -561,8 +577,7 @@ dhcpcd_getconfig(DBusConnection *con, DBusMessage *msg)
 		DBUS_TYPE_STRING, &block,
 		DBUS_TYPE_STRING, &name,
 		DBUS_TYPE_INVALID))
-		return return_dbus_error(con, msg, S_EINVAL,
-		    "No block or name specified");
+		return return_dbus_error(con, msg, S_EINVAL, S_ARGS);
 
 	errno = 0;
 	opts = dhcpcd_read_options(*block == '\0' ? NULL : block,
@@ -613,8 +628,7 @@ dhcpcd_setconfig(DBusConnection *con, DBusMessage *msg)
 		DBUS_TYPE_STRING, &block,
 		DBUS_TYPE_STRING, &name,
 		DBUS_TYPE_INVALID))
-		return return_dbus_error(con, msg, S_EINVAL,
-		    "No block or name specified");
+		return return_dbus_error(con, msg, S_EINVAL, S_ARGS);
 
 	opts = opt = NULL;
 	dbus_message_iter_init(msg, &args);
@@ -662,6 +676,156 @@ dhcpcd_setconfig(DBusConnection *con, DBusMessage *msg)
 }
 
 static DBusHandlerResult
+dhcpcd_getconfigvalue(DBusConnection *con, DBusMessage *msg)
+{
+	DBusMessage *reply;
+	DBusMessageIter args;
+	DBusError err;
+	const char ns[] = "";
+	char *block, *name, *option;
+	const char *p;
+	struct option_value *opts;
+	const struct option_value *opt, *o;
+
+	dbus_error_init(&err);
+	if (!dbus_message_get_args(msg, &err,
+		DBUS_TYPE_STRING, &block,
+		DBUS_TYPE_STRING, &name,
+		DBUS_TYPE_STRING, &option,
+		DBUS_TYPE_INVALID))
+		return return_dbus_error(con, msg, S_EINVAL, S_ARGS);
+
+	errno = 0;
+	opts = dhcpcd_read_options(*block == '\0' ? NULL : block,
+	    *name == '\0' ? NULL : name);
+	if (opts == NULL && errno)
+		return return_dbus_error(con, msg, S_EINVAL,
+		    "dhcpcd_read_config: %s", strerror(errno));
+	
+	reply = dbus_message_new_method_return(msg);
+	dbus_message_iter_init_append(reply, &args);
+	for (opt = opts; opt; opt = opt->next)
+		if (strcmp(opt->option, option) == 0)
+			o = opt;
+	if (o) {
+		if (opt->value == NULL)
+			p = ns;
+		else
+			p = opt->value;		
+		dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, p);
+	}
+	dbus_connection_send(con, reply, NULL);
+	dbus_message_unref(reply);
+	free_option_values(opts);
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
+static DBusHandlerResult
+dhcpcd_setconfigvalue(DBusConnection *con, DBusMessage *msg, int rem)
+{
+	DBusMessage *reply;
+	DBusError err;
+	char *block, *name, *option, *value;
+	struct option_value *opts, *opt, *optn, *o, *ol;
+	int existing;
+
+	dbus_error_init(&err);
+	if (rem) {
+		if (!dbus_message_get_args(msg, &err,
+			DBUS_TYPE_STRING, &block,
+			DBUS_TYPE_STRING, &name,
+			DBUS_TYPE_STRING, &option,
+			DBUS_TYPE_INVALID))
+			return return_dbus_error(con, msg, S_EINVAL, S_ARGS);
+		if (*name != '\0' &&
+		    (strcmp(option, "hostname") == 0 ||
+			strcmp(option, "clientid") == 0))
+		{
+			value = UNCONST("\"\"");
+			rem = 0;
+		}
+	} else {
+		if (!dbus_message_get_args(msg, &err,
+			DBUS_TYPE_STRING, &block,
+			DBUS_TYPE_STRING, &name,
+			DBUS_TYPE_STRING, &option,
+			DBUS_TYPE_STRING, &value,
+			DBUS_TYPE_INVALID))
+			return return_dbus_error(con, msg, S_EINVAL, S_ARGS);
+	}
+
+	if (rem) {
+		if (*name == '\0')
+			syslog(LOG_INFO, "removing global option: %s",
+			    option);
+		else
+			syslog(LOG_INFO, "removing block %s %s option: %s",
+			    block, name, option);
+	} else {
+		if (*name == '\0')
+			syslog(LOG_INFO, "setting global option: %s %s",
+			    option, value);
+		else
+			syslog(LOG_INFO, "setting block %s %s option: %s %s",
+			    block, name, option, value);
+	}
+
+	errno = 0;
+	opts = dhcpcd_read_options(*block == '\0' ? NULL : block,
+	    *name == '\0' ? NULL : name);
+	if (opts == NULL && errno)
+		return return_dbus_error(con, msg, S_EINVAL,
+		    "dhcpcd_read_config: %s", strerror(errno));
+
+	o = ol = NULL;
+	for (opt = opts; opt && (optn = opt->next, 1); opt = optn) {
+		if (strcmp(opt->option, option) == 0) {
+			if (o || rem) {
+				if (ol)
+					ol->next = opt->next;
+				else
+					opts = opt->next;
+				free_option_value(opt);
+				continue;
+			} else
+				o = opt;
+		}
+		ol = opt;
+	}
+	if (!rem) {
+		if (o == NULL) {
+			o = malloc(sizeof(*o));
+			o->option = strdup(option);
+			o->value = NULL;
+			existing = 0;
+		} else
+			existing = 1;
+		if (o && o->option) {
+			free(o->value);
+			if (*value == '\0')
+				o->value = NULL;
+			else
+				o->value = strdup(value);
+			if (!existing) {
+				o->next = NULL;
+				if (ol)
+					ol->next = o;
+				else
+					opts = o;
+			}
+		} else
+			free(o);
+	}
+	dhcpcd_write_options(*block == '\0' ? NULL : block,
+	    *name == '\0' ? NULL : name, opts);
+	free_option_values(opts);
+	reply = dbus_message_new_method_return(msg);
+	dbus_connection_send(con, reply, NULL);
+	dbus_message_unref(reply);
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
+static DBusHandlerResult
 msg_handler(DBusConnection *con, DBusMessage *msg, _unused void *data)
 {
 	if (dbus_message_is_method_call(msg,
@@ -700,6 +864,15 @@ msg_handler(DBusConnection *con, DBusMessage *msg, _unused void *data)
 	else if (dbus_message_is_method_call(msg, DHCPCD_SERVICE,
 		"SetConfig"))
 		return dhcpcd_setconfig(con, msg);
+	else if (dbus_message_is_method_call(msg, DHCPCD_SERVICE,
+		"GetConfigValue"))
+		return dhcpcd_getconfigvalue(con, msg);
+	else if (dbus_message_is_method_call(msg, DHCPCD_SERVICE,
+		"SetConfigValue"))
+		return dhcpcd_setconfigvalue(con, msg, 0);
+	else if (dbus_message_is_method_call(msg, DHCPCD_SERVICE,
+		"RemoveConfigOption"))
+		return dhcpcd_setconfigvalue(con, msg, 1);
 	return wpa_dbus_handler(con, msg);
 }
 
