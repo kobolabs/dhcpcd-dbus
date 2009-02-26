@@ -39,6 +39,7 @@
 static void
 cleanup(void)
 {
+	dhcpcd_dbus_close();
 	wpa_close(NULL);
 #ifdef DEBUG_MEMORY
 	dhcpcd_close();

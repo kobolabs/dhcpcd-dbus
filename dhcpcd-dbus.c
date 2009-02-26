@@ -798,3 +798,12 @@ dhcpcd_dbus_init(void)
 	}
 	return 0;
 }
+
+void
+dhcpcd_dbus_close(void)
+{
+	if (connection) {
+		dbus_connection_unref(connection);
+		connection = NULL;
+	}
+}

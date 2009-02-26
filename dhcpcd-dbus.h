@@ -38,7 +38,7 @@ return_dbus_error(DBusConnection *,
     DBusMessage *, const char *name, const char *fmt, ...);
 
 int dhcpcd_dbus_init(void);
-int dhcpcd_dbus_close(void);
+void dhcpcd_dbus_close(void);
 void dhcpcd_dbus_configure(const struct dhcpcd_config *);
 void dhcpcd_dbus_signal_status(const char *);
 
