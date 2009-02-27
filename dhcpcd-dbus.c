@@ -84,6 +84,10 @@ static const char *dhcpcd_introspection_xml =
     "      <arg name=\"name\" direction=\"in\" type=\"s\"/>\n"
     "      <arg name=\"config\" direction=\"in\" type=\"aa(ss)\"/>\n"
     "    </method>\n"
+    "    <method name=\"SetDefaultConfig\">\n"
+    "      <arg name=\"block\" direction=\"in\" type=\"s\"/>\n"
+    "      <arg name=\"name\" direction=\"in\" type=\"s\"/>\n"
+    "    </method>\n"
     "    <method name=\"GetConfigValue\">\n"
     "      <arg name=\"block\" direction=\"in\" type=\"s\"/>\n"
     "      <arg name=\"name\" direction=\"in\" type=\"s\"/>\n"
@@ -675,6 +679,67 @@ dhcpcd_setconfig(DBusConnection *con, DBusMessage *msg)
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
+static const char *const def_config[] = {
+	"hostname",
+	"",
+	"option",
+	"domain_name_servers, domain_name, domain_search, host_name",
+	"option",
+	"ntp_servers",
+	NULL,
+	NULL
+};
+
+static DBusHandlerResult
+dhcpcd_setdefaultconfig(DBusConnection *con, DBusMessage *msg)
+{
+	DBusMessage *reply;
+	DBusError err;
+	struct option_value *opts, *opt;
+	char *block, *name;
+	const char *const *c;
+
+	dbus_error_init(&err);
+	if (!dbus_message_get_args(msg, &err,
+		DBUS_TYPE_STRING, &block,
+		DBUS_TYPE_STRING, &name,
+		DBUS_TYPE_INVALID))
+		return return_dbus_error(con, msg, S_EINVAL, S_ARGS);
+
+	if (*name == '\0') {
+		syslog(LOG_INFO, "Setting default global configuration");
+		opts = opt = NULL;
+		for (c = def_config; *c; c++, c++) {
+			if (opts == NULL)
+				opts = opt = malloc(sizeof(*opts));
+			else {
+				opt->next = malloc(sizeof(*opts));
+				opt = opt->next;
+			}
+			if (opt == NULL)
+				break;
+			opt->option = UNCONST(c[0]);
+			opt->value = UNCONST(c[1]);
+			opt->next = NULL;
+		}
+	} else {
+		syslog(LOG_INFO, "Removing configuration block: %s %s",
+		    block, name);
+		opts = NULL;
+	}
+	dhcpcd_write_options(*block == '\0' ? NULL : block,
+	    *name == '\0' ? NULL : name, opts);
+	while (opts) {
+		opt = opts->next;
+		free(opts);
+		opts = opt;
+	}
+	reply = dbus_message_new_method_return(msg);
+	dbus_connection_send(con, reply, NULL);
+	dbus_message_unref(reply);
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
 static DBusHandlerResult
 dhcpcd_getconfigvalue(DBusConnection *con, DBusMessage *msg)
 {
@@ -864,6 +929,9 @@ msg_handler(DBusConnection *con, DBusMessage *msg, _unused void *data)
 	else if (dbus_message_is_method_call(msg, DHCPCD_SERVICE,
 		"SetConfig"))
 		return dhcpcd_setconfig(con, msg);
+	else if (dbus_message_is_method_call(msg, DHCPCD_SERVICE,
+		"SetDefaultConfig"))
+		return dhcpcd_setdefaultconfig(con, msg);
 	else if (dbus_message_is_method_call(msg, DHCPCD_SERVICE,
 		"GetConfigValue"))
 		return dhcpcd_getconfigvalue(con, msg);
