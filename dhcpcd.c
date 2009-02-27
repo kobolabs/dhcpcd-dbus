@@ -556,22 +556,36 @@ _options(int action, const char *block, const char *name,
 		fp = freopen(cffile, "w", fp);
 		if (fp == NULL)
 			goto exit;
-		skip = 0;
-		for (i = 0; i < buf_len; i++) {
-			fputs(buf[i], fp);
-			fputc('\n', fp);
-			skip = buf[i][0] == '\0' ? 1 : 0;
-		}
+		if (block) {
+			skip = 0;
+			for (i = 0; i < buf_len; i++) {
+				fputs(buf[i], fp);
+				fputc('\n', fp);
+				skip = buf[i][0] == '\0' ? 1 : 0;
+			}
+		} else
+			skip = 1;
 		if (no && block) {
 			if (!skip)
 				fputc('\n', fp);
 			fprintf(fp, "%s %s\n", block, name);
 		}
+		skip = 0;
 		for (co = no; co; co = co->next) {
 			if (co->value)
 				fprintf(fp, "%s %s\n", co->option, co->value);
 			else
 				fprintf(fp, "%s\n", co->option);
+			skip = 1;
+		}
+		if (block == NULL) {
+			if (!skip)
+				fputc('\n', fp);			
+			for (i = 0; i < buf_len; i++) {
+				fputs(buf[i], fp);
+				fputc('\n', fp);
+				skip = buf[i][0] == '\0' ? 1 : 0;
+			}
 		}
 	} else
 		free_opts = 0;
