@@ -58,6 +58,7 @@ const char *const up_reasons[] = {
 	"REBOOT",
 	"IPV4LL",
 	"INFORM",
+	"STATIC",
 	"TIMEOUT",
 	NULL
 };

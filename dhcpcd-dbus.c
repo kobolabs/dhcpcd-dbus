@@ -769,6 +769,7 @@ dhcpcd_getconfigvalue(DBusConnection *con, DBusMessage *msg)
 	
 	reply = dbus_message_new_method_return(msg);
 	dbus_message_iter_init_append(reply, &args);
+	o = NULL;
 	for (opt = opts; opt; opt = opt->next)
 		if (strcmp(opt->option, option) == 0)
 			o = opt;
