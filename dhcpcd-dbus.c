@@ -94,6 +94,7 @@ static const char *dhcpcd_introspection_xml =
 static const struct o_dbus const dhos[] = {
 	{ "interface=", DBUS_TYPE_STRING, 0, "Interface" },
 	{ "reason=", DBUS_TYPE_STRING, 0, "Reason" },
+	{ "flags=", DBUS_TYPE_UINT32, 0, "Flags" },
 	{ "wireless=", DBUS_TYPE_BOOLEAN, 0, "Wireless" },
 	{ "ssid=", DBUS_TYPE_STRING, 0, "SSID" },
 	{ "interface_order=", DBUS_TYPE_STRING, 0, "InterfaceOrder" },
