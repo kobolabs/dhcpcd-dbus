@@ -4,10 +4,10 @@
 CLEANFILES+=	.depend
 
 .depend: ${SRCS}
+	rm -f .depend
 	${CC} ${CPPFLAGS} ${CFLAGS} -MM ${SRCS} > .depend
 
 depend: .depend
-
 
 # Nasty hack. depend-.mk is a blank file, depend-gmake.mk has a gmake specific
 # command to optionally include .depend.
