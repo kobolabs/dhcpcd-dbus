@@ -1,0 +1,5 @@
+.depend
+*.o
+dhcpcd-dbus
+name.marples.roy.dhcpcd.service
+dhcpcd-dbus-*.tar.bz2
