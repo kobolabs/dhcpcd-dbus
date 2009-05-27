@@ -43,7 +43,8 @@
 
 struct if_sock {
 	char *iface;
-	int fd;
+	int cmd_fd;
+	int ctrl_fd;
 	char *sock;
 	int attached;
 	struct if_sock *next;
@@ -139,7 +140,7 @@ wpa_cmd(const char *iface, const char *cmd, char *buffer, ssize_t len)
 	ifs = find_if_sock(iface);
 	if (ifs == NULL)
 		return -1;
-	return _wpa_cmd(ifs->fd, cmd, buffer, len);
+	return _wpa_cmd(ifs->cmd_fd, cmd, buffer, len);
 }
 
 static int
@@ -150,12 +151,12 @@ attach_detach(struct if_sock *ifs, int attach)
 	if (ifs->attached == attach)
 		return 0;
 	if (attach > 0) {
-		if (_wpa_cmd(ifs->fd, "ATTACH", buffer, sizeof(buffer)) == -1)
+		if (_wpa_cmd(ifs->ctrl_fd, "ATTACH", buffer, sizeof(buffer)) == -1)
 			return -1;
 		if (strcmp(buffer, "OK\n") != 0)
 			return -1;
 	} else {
-		if (_wpa_cmd(ifs->fd, "DETACH", NULL, 0) == -1)
+		if (_wpa_cmd(ifs->ctrl_fd, "DETACH", NULL, 0) == -1)
 			return -1;
 	}
 	ifs->attached = attach;
@@ -165,30 +166,37 @@ attach_detach(struct if_sock *ifs, int attach)
 static struct if_sock *
 wpa_open(const char *iface)
 {
-	struct if_sock *ifs;
-	int fd;
+	struct if_sock *ifs = NULL;
+	int cmd_fd = -1, ctrl_fd = -1;
 	char *path;
 
-	fd = _wpa_open(iface, &path);
-	if (fd == -1)
-		return NULL;
+	cmd_fd = _wpa_open(iface, &path);
+	if (cmd_fd == -1)
+		goto fail;
+	ctrl_fd = _wpa_open(iface, &path);
+	if (ctrl_fd == -1)
+		goto fail;
 	ifs = malloc(sizeof(*ifs));
-	if (ifs == NULL) {
-		close(fd);
-		return NULL;
-	}
+	if (ifs == NULL)
+		goto fail;
 	ifs->iface = strdup(iface);
-	if (ifs->iface == NULL) {
-		close(fd);
-		free(ifs);
-		return NULL;
-	}
-	ifs->fd = fd;
+	if (ifs->iface == NULL)
+		goto fail;
+	ifs->cmd_fd = cmd_fd;
+	ifs->ctrl_fd = ctrl_fd;
 	ifs->sock = path;
 	ifs->next = socks;
 	ifs->attached = 0;
 	socks = ifs;
 	return ifs;
+
+fail:
+	if (cmd_fd != -1)
+		close(cmd_fd);
+	if (ctrl_fd != -1)
+		close(ctrl_fd);
+	free(ifs);
+	return NULL;
 }
 
 int
@@ -202,9 +210,10 @@ wpa_close(const char *iface)
 	for (ifs = socks; ifs && (ifn = ifs->next, 1); ifs = ifn) {
 		if (iface == NULL || strcmp(ifs->iface, iface) == 0) {
 			attach_detach(ifs, -1);
-			delete_event(ifs->fd);
+			delete_event(ifs->ctrl_fd);
 			delete_timeout(NULL, ifs);
-			retval |= shutdown(ifs->fd, SHUT_RDWR);
+			retval |= shutdown(ifs->ctrl_fd, SHUT_RDWR);
+			retval |= shutdown(ifs->cmd_fd, SHUT_RDWR);
 			free(ifs->iface);
 			unlink(ifs->sock);
 			free(ifs->sock);
@@ -226,7 +235,7 @@ read_event(const struct if_sock *ifs)
 	char buffer[256], *p;
 	ssize_t bytes;
 
-	bytes = read(ifs->fd, buffer, sizeof(buffer));
+	bytes = read(ifs->ctrl_fd, buffer, sizeof(buffer));
 	if (bytes == -1 || bytes == 0)
 		return -1;
 	buffer[bytes] = '\0';
@@ -257,7 +266,7 @@ ping(void *arg)
 	struct dhcpcd_config *c;
 
 	ifs = (struct if_sock *)arg;
-	if (_wpa_cmd(ifs->fd, "PING", buffer, sizeof(buffer)) > 0 &&
+	if (_wpa_cmd(ifs->cmd_fd, "PING", buffer, sizeof(buffer)) > 0 &&
 	    strncmp(buffer, "PONG\n", 5) == 0) {
 		add_timeout_sec(1, ping, ifs);
 		return;
@@ -288,7 +297,7 @@ wpa_init(void *arg)
 		return;
 	}
 
-	add_event(ifs->fd, handle_wpa, ifs);
+	add_event(ifs->ctrl_fd, handle_wpa, ifs);
 	add_timeout_sec(1, ping, ifs);
 	syslog(LOG_INFO, "connected to wpa_supplicant on interface %s", iface);
 	wpa_dbus_signal_scan_results(iface);
