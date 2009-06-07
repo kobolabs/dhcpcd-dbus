@@ -41,7 +41,7 @@
 #define S_EINVAL	DHCPCD_SERVICE ".InvalidArgument"
 #define S_WPA		DHCPCD_SERVICE ".WPASupplicantError"
 
-const char *wpa_introspection_xml =
+const char wpa_introspection_xml[] =
     "    <method name=\"Scan\">\n"
     "      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
     "    </method>\n"

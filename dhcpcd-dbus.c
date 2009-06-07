@@ -45,7 +45,7 @@
 
 DBusConnection *connection;
 
-static const char *dhcpcd_introspection_xml =
+static const char dhcpcd_introspection_xml[] =
     "    <method name=\"GetVersion\">\n"
     "      <arg name=\"version\" direction=\"out\" type=\"s\"/>\n"
     "    </method>\n"
@@ -85,10 +85,10 @@ static const char *dhcpcd_introspection_xml =
     "      <arg name=\"config\" direction=\"in\" type=\"aa(ss)\"/>\n"
     "    </method>\n"
     "    <signal name=\"Event\">\n"
-    "      <arg name=\"configuration\" type=\"a{sv}\">\n"
+    "      <arg name=\"configuration\" type=\"a{sv}\"/>\n"
     "    </signal>\n"
     "    <signal name=\"StatusChanged\">\n"
-    "      <arg name=\"status\" type=\"s\">\n"
+    "      <arg name=\"status\" type=\"s\"/>\n"
     "    </signal>\n";
 
 static const struct o_dbus const dhos[] = {
@@ -354,10 +354,10 @@ dhcpcd_dbus_configure(const struct dhcpcd_config *c)
 	dbus_message_unref(msg);
 }
 
-static const char *introspection_header_xml =
+static const char introspection_header_xml[] =
     "<!DOCTYPE node PUBLIC \"-//freedesktop//"
     "DTD D-BUS Object Introspection 1.0//EN\"\n"
-    "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd\";>\n"
+    "\"http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd\">\n"
     "<node name=\"" DHCPCD_PATH "\">\n"
     "  <interface name=\"org.freedesktop.DBus.Introspectable\">\n"
     "    <method name=\"Introspect\">\n"
@@ -366,7 +366,7 @@ static const char *introspection_header_xml =
     "  </interface>\n"
     "  <interface name=\"" DHCPCD_SERVICE "\">\n";
 
-static const char *introspection_footer_xml =
+static const char introspection_footer_xml[] =
     "  </interface>\n"
     "</node>\n";
 
@@ -377,14 +377,15 @@ introspect(DBusConnection *con, DBusMessage *msg)
 	char *xml;
 	size_t len;
 
-	len = strlen(introspection_header_xml) +
-	    strlen(dhcpcd_introspection_xml) +
-	    strlen(wpa_introspection_xml) +
-	    strlen(introspection_footer_xml) + 1;
+	len = sizeof(introspection_header_xml) - 1
+	    + sizeof(dhcpcd_introspection_xml) - 1
+	    + strlen(wpa_introspection_xml)
+	    + sizeof(introspection_footer_xml) - 1
+	    + 1; /* terminal \0 */
 	xml = malloc(len);
 	if (xml == NULL)
 		return DBUS_HANDLER_RESULT_HANDLED;
-	snprintf(xml, sizeof(xml), "%s%s%s%s",
+	snprintf(xml, len, "%s%s%s%s",
 	    introspection_header_xml,
 	    dhcpcd_introspection_xml,
 	    wpa_introspection_xml,
