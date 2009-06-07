@@ -28,7 +28,7 @@
 #define CONFIG_H
 
 #define PACKAGE			"dhcpcd-dbus"
-#define VERSION			"0.4.0"
+#define VERSION			"0.4.1"
 
 #define DHCPCD_SERVICE "name.marples.roy.dhcpcd"
 #define DHCPCD_PATH    "/name/marples/roy/dhcpcd"
