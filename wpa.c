@@ -44,8 +44,9 @@
 struct if_sock {
 	char *iface;
 	int cmd_fd;
+	char *cmd_path;
 	int ctrl_fd;
-	char *sock;
+	char *ctrl_path;
 	int attached;
 	struct if_sock *next;
 };
@@ -168,12 +169,12 @@ wpa_open(const char *iface)
 {
 	struct if_sock *ifs = NULL;
 	int cmd_fd = -1, ctrl_fd = -1;
-	char *path;
+	char *cmd_path = NULL, *ctrl_path = NULL;
 
-	cmd_fd = _wpa_open(iface, &path);
+	cmd_fd = _wpa_open(iface, &cmd_path);
 	if (cmd_fd == -1)
 		goto fail;
-	ctrl_fd = _wpa_open(iface, &path);
+	ctrl_fd = _wpa_open(iface, &ctrl_path);
 	if (ctrl_fd == -1)
 		goto fail;
 	ifs = malloc(sizeof(*ifs));
@@ -183,8 +184,9 @@ wpa_open(const char *iface)
 	if (ifs->iface == NULL)
 		goto fail;
 	ifs->cmd_fd = cmd_fd;
+	ifs->cmd_path = cmd_path;
 	ifs->ctrl_fd = ctrl_fd;
-	ifs->sock = path;
+	ifs->ctrl_path = ctrl_path;
 	ifs->next = socks;
 	ifs->attached = 0;
 	socks = ifs;
@@ -195,6 +197,8 @@ fail:
 		close(cmd_fd);
 	if (ctrl_fd != -1)
 		close(ctrl_fd);
+	free(cmd_path);
+	free(ctrl_path);
 	free(ifs);
 	return NULL;
 }
@@ -215,8 +219,10 @@ wpa_close(const char *iface)
 			retval |= shutdown(ifs->ctrl_fd, SHUT_RDWR);
 			retval |= shutdown(ifs->cmd_fd, SHUT_RDWR);
 			free(ifs->iface);
-			unlink(ifs->sock);
-			free(ifs->sock);
+			unlink(ifs->cmd_path);
+			free(ifs->cmd_path);
+			unlink(ifs->ctrl_path);
+			free(ifs->ctrl_path);
 			if (ifl == NULL)
 				socks = ifs->next;
 			else
