@@ -3,3 +3,5 @@
 dhcpcd-dbus
 name.marples.roy.dhcpcd.service
 dhcpcd-dbus-*.tar.bz2
+config.h
+config.mk
