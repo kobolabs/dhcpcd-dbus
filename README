@@ -1,11 +1,11 @@
 dhcpcd-dbus
-Copyright 2009 Roy Marples <roy@marples.name>
+Copyright 2009-2010 Roy Marples <roy@marples.name>
 
 
 Installation
 ------------
 dbus-1.2.0 or newer is required to build
-dhcpcd-4.99.14 or newer is required for for it to work
+dhcpcd-5.0 or newer is required for for it to work
 Then just make; make install
 
 

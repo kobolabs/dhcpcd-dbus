@@ -1,6 +1,6 @@
 /*
  * dhcpcd-dbus
- * Copyright 2008 Roy Marples <roy@marples.name>
+ * Copyright 2008-2010 Roy Marples <roy@marples.name>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,18 +24,20 @@
  * SUCH DAMAGE.
  */
 
-#ifndef CONFIG_H
-#define CONFIG_H
+#ifndef DEFS_H
+#define DEFS_H
 
 #define PACKAGE			"dhcpcd-dbus"
-#define VERSION			"0.4.2"
+#define VERSION			"0.5.0"
+
+#include "config.h"
 
 #define DHCPCD_SERVICE "name.marples.roy.dhcpcd"
 #define DHCPCD_PATH    "/name/marples/roy/dhcpcd"
 
-#define DHCPCD_SOCKET  "/var/run/dhcpcd.sock"
+#define DHCPCD_SOCKET  RUNDIR "/dhcpcd.sock"
 
-#define WPA_CTRL_DIR   "/var/run/wpa_supplicant"
+#define WPA_CTRL_DIR   RUNDIR "/wpa_supplicant"
 
 #define UNCONST(a)	((void *)(unsigned long)(const void *)(a))
 
@@ -45,13 +47,6 @@
 #else
 # define _printf(a, b)
 # define _unused
-#endif
-
-/* Only GLIBC doesn't support strlcpy */
-#ifdef __GLIBC__
-#  if !defined(__UCLIBC__) && !defined (__dietlibc__)
-#    define strlcpy(dst, src, n) snprintf(dst, n, "%s", src);
-#  endif
 #endif
 
 #endif

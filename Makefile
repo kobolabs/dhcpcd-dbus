@@ -1,43 +1,56 @@
-# Makefile based on BSD make.
-# Our mk stubs also work with GNU make.
-# Copyright 2008 Roy Marples <roy@marples.name>
-
 PROG=		dhcpcd-dbus
 SRCS=		dhcpcd.c dbus-dict.c dhcpcd-dbus.c wpa.c wpa-dbus.c
 SRCS+=		eloop.c main.c
 
+OBJS=		${SRCS:.c=.o}
+
+CFLAGS?=	-O2
+include config.mk
+
 CONFFILES=	dhcpcd-dbus.conf
 FILES=		name.marples.roy.dhcpcd.service
+CONFDIR=	${SYSCONFDIR}/dbus-1/system.d
+FILESDIR=	${PREFIX}/share/dbus-1/system-services
 CLEANFILES+=	name.marples.roy.dhcpcd.service
 
-PREFIX?=	/usr/local
-BINDIR?=	${PREFIX}/libexec
-SYSCONFDIR?=	${PREFIX}/etc/dbus-1/system.d
-FILESDIR?=	${PREFIX}/share/dbus-1/system-services
+_VERSION_SH=	sed -n 's/\#define VERSION[[:space:]]*"\(.*\)".*/\1/p' defs.h
+_VERSION!=	${_VERSION_SH}
+VERSION=	${_VERSION}$(shell ${_VERSION_SH})
 
-_DBUSCFLAGS_SH=	pkg-config --cflags dbus-1
-_DBUSCFLAGS!=	${_DBUSCFLAGS_SH}
-DBUSCFLAGS=	${_DBUSCFLAGS}$(shell ${_DBUSCFLAGS_SH})
-
-_DBUSLIBS_SH=	pkg-config --libs dbus-1
-_DBUSLIBS!=	${_DBUSLIBS_SH}
-DBUSLIBS=	${_DBUSLIBS}$(shell ${_DBUSLIBS_SH})
-
-# Linux needs librt
-_LIBRT_SH=	[ "$$(uname -s)" = "Linux" ] && echo "-lrt" || echo ""
-_LIBRT!=	${_LIBRT_SH}
-LIBRT?=		${_LIBRT}$(shell ${_LIBRT_SH})
-
-CFLAGS+=	${DBUSCFLAGS}
-LDADD+=		${DBUSLIBS} ${LIBRT}
+GITREF?=	HEAD
+DISTPREFIX?=	${PROG}-${VERSION}
+DISTFILE?=	${DISTPREFIX}.tar.bz2
 
 .SUFFIXES: .in
 
-all: ${TARGET} ${FILES}
+all: ${PROG} ${FILES}
 
 .in:
-	sed -e 's:@BINDIR@:${BINDIR}:g' $@.in > $@
+	${SED} -e 's:@LIBEXECDIR@:${LIBEXECDIR}:g' $@.in > $@
 
-MK=		mk
-include ${MK}/sys.mk
-include ${MK}/prog.mk
+.c.o:
+	${CC} ${CFLAGS} ${CPPFLAGS} -c $< -o $@
+
+.depend: ${SRCS} ${COMPAT_SRCS}
+	${CC} ${CPPFLAGS} -MM ${SRCS} ${COMPAT_SRCS} > .depend
+
+depend: .depend
+
+${PROG}: .depend ${OBJS}
+	${CC} ${LDFLAGS} -o $@ ${OBJS} ${LDADD}
+
+install:
+	${INSTALL} -d ${DESTDIR}${LIBEXECDIR}
+	${INSTALL} -m ${BINMODE} ${PROG} ${DESTDIR}${LIBEXECDIR}
+	${INSTALL} -d ${DESTDIR}${CONFDIR}
+	${INSTALL} -m ${FILESMODE} ${CONFFILES} ${DESTDIR}${CONFDIR}
+	${INSTALL} -d ${DESTDIR}${FILESDIR}
+	${INSTALL} -m ${FILESMODE} ${FILES} ${DESTDIR}${FILESDIR}
+
+clean:
+	rm -f ${OBJS} ${PROG} ${PROG}.core ${CLEANFILES}
+
+dist:
+	git archive --prefix=${DISTPREFIX}/ ${GITREF} | bzip2 > ${DISTFILE}
+
+include Makefile.inc

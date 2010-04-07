@@ -29,6 +29,7 @@
 
 #include <dbus/dbus.h>
 
+#include "defs.h"
 #include "dhcpcd.h"
 
 extern DBusConnection *connection;

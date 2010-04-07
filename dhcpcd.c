@@ -36,7 +36,7 @@
 #include <syslog.h>
 #include <unistd.h>
 
-#include "config.h"
+#include "defs.h"
 #include "dhcpcd.h"
 #include "dhcpcd-dbus.h"
 #include "eloop.h"
