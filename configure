@@ -192,7 +192,6 @@ echo "DBus LIBS=$DBUS_LIBS"
 echo "CFLAGS+=	$DBUS_CFLAGS" >>config.mk
 echo "LDADD+=		$DBUS_LIBS" >>config.mk
 
-DBUSLIBS_SH=	pkg-config --libs dbus-1
 echo
 echo "   SYSCONFDIR =		$SYSCONFDIR"
 echo "   LIBEXECDIR =		$LIBEXECDIR"
