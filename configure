@@ -107,7 +107,7 @@ done
 if [ -z "$CC" ]; then
 	printf "Looking for compiler ... "
 	for b in $TARGET- ""; do
-		for cc in gcc pcc icc cc; do
+		for cc in gcc pcc clang icc cc; do
 			if type $b$cc >/dev/null 2>&1; then
 				CC=$b$cc
 				echo "$CC"
@@ -189,7 +189,7 @@ DBUS_CFLAGS=$(pkg-config --cflags dbus-1) || exit 1
 DBUS_LIBS=$(pkg-config --libs dbus-1) || exit 1
 echo "DBus CFLAGS=$DBUS_CFLAGS"
 echo "DBus LIBS=$DBUS_LIBS"
-echo "CFLAGS+=	$DBUS_CFLAGS" >>config.mk
+echo "CPPFLAGS+=	$DBUS_CFLAGS" >>config.mk
 echo "LDADD+=		$DBUS_LIBS" >>config.mk
 
 echo
