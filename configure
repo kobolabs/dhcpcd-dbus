@@ -13,7 +13,7 @@ for x; do
 	--debug) DEBUG=$var;;
 	--disable-debug) DEBUG=no;;
 	--enable-debug) DEBUG=yes;;
-	--prefix) PREFIX=$var;;
+	--prefix) prefix=$var;;
 	--sysconfdir) SYSCONFDIR=$var;;
 	--bindir|--sbindir) SBINDIR=$var;;
 	--libexecdir) LIBEXECDIR=$var;;
@@ -25,8 +25,10 @@ for x; do
 	--build) BUILD=$var;;
 	--host) HOST=$var;;
 	--target) TARGET=$var;;
+	--includedir) eval INCLUDEDIR="$INCLUDEDIR${INCLUDEDIR:+ }$var";;
 	--libdir) LIBDIR=$var;;
 	--datadir|--infodir) ;; # ignore autotools
+	--disable-maintainer-mode|--disable-dependency-tracking) ;;
 	--help) echo "See the README file for available options"; exit 0;;
 	*) echo "$0: WARNING: unknown option $opt" >&2;;
 	esac
@@ -34,7 +36,7 @@ done
 
 : ${SED:=sed}
 
-: ${PREFIX:=/usr/local}
+: ${PREFIX:=${prefix:=/usr/local}}
 : ${SYSCONFDIR:=$PREFIX/etc}
 : ${LIBDIR:=$PREFIX/lib}
 : ${LIBEXECDIR:=$PREFIX/libexec}
@@ -42,6 +44,14 @@ done
 : ${DBDIR:=$STATEDIR/db}
 : ${RUNDIR:=$STATEDIR/run}
 : ${MANDIR:=${PREFIX:-/usr}/share/man}
+
+eval SYSCONFDIR="$SYSCONFDIR"
+eval LIBDIR="$LIBDIR"
+eval LIBEXECDIR="$LIBEXECDIR"
+eval STATEDIR="$STATEDIR"
+eval DBDIR="$DBDIR"
+eval RUNDIR="$RUNDIR"
+eval MANDIR="$MANDIR"
 
 _which()
 {
@@ -65,7 +75,7 @@ CONFIG_H=config.h
 CONFIG_MK=config.mk
 
 if [ -z "$BUILD" ]; then
-	BUILD=`uname -m`-unknown-`uname -s | tr '[:upper:]' '[:lower:]'`
+	BUILD=`uname -m`-`uname -s | tr '[:upper:]' '[:lower:]'`
 fi
 if [ -z "$HOST" ]; then
 	[ -z "$TARGET" ] && TARGET=$BUILD
@@ -80,11 +90,26 @@ if [ -z "$OS" ]; then
 	# Derive OS from cpu-manufacturer-os-kernel
 	CPU=${TARGET%%-*}
 	REST=${TARGET#*-}
-	MANU=${REST%%-*}
-	REST=${REST#*-}
-	OS=${REST%%-*}
-	REST=${REST#*-}
-	KERNEL=${REST%%-*}
+	if [ "$CPU" != "$REST" ]; then
+		MANU=${REST%%-*}
+		REST=${REST#*-}
+		if [ "$MANU" != "$REST" ]; then
+			OS=${REST%%-*}
+			REST=${REST#*-}
+			if [ "$OS" != "$REST" ]; then
+				KERNEL=${REST%%-*}
+			else
+				# 3 tupple
+				KERNEL=$OS
+				OS=$MANU
+				MANU=
+			fi
+		else
+			# 2 tupple
+			OS=$MANU
+			MANU=
+		fi
+	fi
 fi
 
 echo "Configuring dhcpcd-dbus for ... $OS"
@@ -132,6 +157,9 @@ fi
 if [ -n "$CPPLAGS" ]; then
 	echo "CPPLAGS=		$CPPLAGS" >>$CONFIG_MK
 fi
+for x in $INCLUDEDIR; do
+	echo "CPPFLAGS+=	-I$x" >>$CONFIG_MK
+done
 
 if [ -n "$DEBUG" -a "$DEBUG" != no -a "$DEBUG" != false ]; then
 	echo "Enabling memory debugging"
