@@ -164,13 +164,14 @@ append_config_array(DBusMessageIter *entry, int type, const char *data)
 			    DBUS_TYPE_STRING, &tok);
 			break;
 		case DBUS_TYPE_UINT32:
-			if (strchr(data, '.') != NULL &&
-			    inet_aton(data, &in) == 1)
+			if (strchr(tok, '.') != NULL &&
+			    inet_aton(tok, &in) == 1)
 				u32 = in.s_addr;
 			else
 				u32 = strtoul(tok, NULL, 0);
 			ok = dbus_message_iter_append_basic(&array,
 			    DBUS_TYPE_UINT32, &u32);
+                        break;
 		default:
 			ok = FALSE;
 			break;
