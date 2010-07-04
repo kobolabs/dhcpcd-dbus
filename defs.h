@@ -28,7 +28,7 @@
 #define DEFS_H
 
 #define PACKAGE			"dhcpcd-dbus"
-#define VERSION			"0.5.1"
+#define VERSION			"0.5.2"
 
 #include "config.h"
 
