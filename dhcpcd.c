@@ -60,6 +60,7 @@ const char *const up_reasons[] = {
 	"INFORM",
 	"STATIC",
 	"TIMEOUT",
+	"ROUTERADVERT",
 	NULL
 };
 
