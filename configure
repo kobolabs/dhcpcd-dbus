@@ -125,6 +125,13 @@ rm -f $CONFIG_H $CONFIG_MK
 echo "# $OS" >$CONFIG_MK
 echo "/* $OS */" >$CONFIG_H
 
+# Linux gets -lrt via
+case "$OS" in
+linux|kfreebsd)
+	echo "LDADD+=		-lrt" >>$CONFIG_MK
+	;;
+esac
+
 for x in PREFIX SYSCONFDIR LIBEXECDIR RUNDIR; do
 	eval v=\$$x
 	# Make files look nice for import
