@@ -1,6 +1,6 @@
 /*
  * dhcpcd-dbus
- * Copyright 2009 Roy Marples <roy@marples.name>
+ * Copyright 2009-2012 Roy Marples <roy@marples.name>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -52,7 +52,7 @@ append_config_value(DBusMessageIter *entry, int type,
 	retval = -1;
 	switch (type) {
 	case DBUS_TYPE_BOOLEAN:
-		if (*data == '0' || *data == '\0')
+		if (*data == '0' || *data == '\0' || strcmp(data, "false") == 0)
 			u32 = 0;
 		else
 			u32 = 1;

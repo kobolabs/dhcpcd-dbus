@@ -1,6 +1,6 @@
 /*
  * dhcpcd-dbus
- * Copyright 2009 Roy Marples <roy@marples.name>
+ * Copyright 2009-2012 Roy Marples <roy@marples.name>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -94,6 +94,7 @@ static const char dhcpcd_introspection_xml[] =
 static const struct o_dbus const dhos[] = {
 	{ "interface=", DBUS_TYPE_STRING, 0, "Interface" },
 	{ "reason=", DBUS_TYPE_STRING, 0, "Reason" },
+	{ "if_up=", DBUS_TYPE_BOOLEAN, 0, "Up" },
 	{ "ifflags=", DBUS_TYPE_UINT32, 0, "Flags" },
 	{ "ifwireless=", DBUS_TYPE_BOOLEAN, 0, "Wireless" },
 	{ "ifmetric=", DBUS_TYPE_UINT16, 0, "Metric" },
@@ -225,6 +226,11 @@ static const struct o_dbus const dhos[] = {
 	{ "subnet_selection=", DBUS_TYPE_UINT32, 0, "SubnetSelection" },
 	{ "domain_search=", DBUS_TYPE_ARRAY, DBUS_TYPE_STRING,
 	  "DomainSearch" },
+	{ "ra1_prefix=", DBUS_TYPE_STRING, 0, "RA_Prefix" },
+	{ "ra1_prefix_len=", DBUS_TYPE_BYTE, 0, "RA_PrefixLen" },
+	{ "ra1_mtu=", DBUS_TYPE_UINT16, 0, "RA_MTU" },
+	{ "ra1_rdnss=", DBUS_TYPE_ARRAY, DBUS_TYPE_STRING, "RA_RDNSS" },
+	{ "ra1_dnssl=", DBUS_TYPE_ARRAY, DBUS_TYPE_STRING, "RA_DNSSL" },
 	{ NULL, 0, 0, NULL }
 };
 
@@ -240,7 +246,7 @@ append_config(DBusMessageIter *iter,
 	retval = 0;
 	p = c->data;
 	e = p + c->data_len;
-	lp = strlen(prefix);
+	lp = prefix ? strlen(prefix) : 0;
 	while (p < e) {
 		for (dhop = dhos; dhop->var; dhop++) {
 			l = strlen(dhop->var);
@@ -249,6 +255,8 @@ append_config(DBusMessageIter *iter,
 				    dhop, p + l);
 				break;
 			}
+			if (lp == 0)
+				continue;
 			if (strncmp(p, prefix, lp) == 0 &&
 			    strncmp(p + lp, dhop->var, l) == 0)
 			{
@@ -324,6 +332,7 @@ dhcpcd_dbus_configure(const struct dhcpcd_config *c)
 	DBusMessage* msg = NULL;
 	DBusMessageIter args, dict;
 	const char *reason;
+	struct o_dbus type;
 
 	msg = dbus_message_new_signal(DHCPCD_PATH, DHCPCD_SERVICE, "Event");
 	if (msg == NULL) {
@@ -340,11 +349,18 @@ dhcpcd_dbus_configure(const struct dhcpcd_config *c)
 	    DBUS_TYPE_VARIANT_AS_STRING
 	    DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
 	    &dict);
-	if (dhcpcd_get_value(c, "new_ip_address") ||
+	if (strcmp(c->type, "ra") == 0) {
+		retval = append_config(&dict, NULL, c);
+	} else if (dhcpcd_get_value(c, "new_ip_address") ||
 	    strcmp(reason, "CARRIER") == 0)
 		retval = append_config(&dict, "new_", c);
 	else
 		retval = append_config(&dict, "old_", c);
+	if (retval == 0) {
+		type.name = "Type";
+		type.type = DBUS_TYPE_STRING;
+		retval = dict_append_config_item(&dict, &type, c->type);
+	}
 	dbus_message_iter_close_container(&args, &dict);
 	if (retval == 0) {
 		if (!dbus_connection_send(connection, msg, NULL))
@@ -420,7 +436,11 @@ dhcpcd_get_interfaces(DBusConnection *con, DBusMessage *msg)
 	DBusMessage *reply;
 	DBusMessageIter ifaces, iface, entry, dict;
 	const struct dhcpcd_config *c;
+	struct o_dbus type;
+	const char *prefix;
 
+	type.name = "Type";
+	type.type = DBUS_TYPE_STRING;
 	reply = dbus_message_new_method_return(msg);
 	dbus_message_iter_init_append(reply, &ifaces);
 
@@ -446,7 +466,12 @@ dhcpcd_get_interfaces(DBusConnection *con, DBusMessage *msg)
 		    DBUS_TYPE_VARIANT_AS_STRING
 		    DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
 		    &dict);
-		append_config(&dict, "new_", c);
+		if (strcmp(c->type, "ra") == 0)
+			prefix = NULL;
+		else
+			prefix = "new_";
+		append_config(&dict, prefix, c);
+		dict_append_config_item(&dict, &type, c->type);
 		dbus_message_iter_close_container(&entry, &dict);
 		dbus_message_iter_close_container(&iface, &entry);
 	}

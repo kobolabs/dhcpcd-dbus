@@ -1,6 +1,6 @@
 /*
  * dhcpcd-dbus
- * Copyright 2009 Roy Marples <roy@marples.name>
+ * Copyright 2009-2012 Roy Marples <roy@marples.name>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -280,7 +280,7 @@ ping(void *arg)
 
 	syslog(LOG_ERR, "lost connection to wpa_supplicant on interface %s",
 	    ifs->iface);
-	c = dhcpcd_get_config(ifs->iface);
+	c = dhcpcd_get_config(ifs->iface, "ipv4");
 	wpa_close(c->iface);
 	add_timeout_sec(1, wpa_init, (void *)UNCONST(c->iface));
 }

@@ -1,6 +1,6 @@
 /*
  * dhcpcd-dbus
- * Copyright 2009 Roy Marples <roy@marples.name>
+ * Copyright 2009-2012 Roy Marples <roy@marples.name>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -50,19 +50,6 @@ static char *order;
 static char *cffile;
 int command_fd = -1;
 static int listen_fd = -1;
-
-const char *const up_reasons[] = {
-	"BOUND",
-	"RENEW",
-	"REBIND",
-	"REBOOT",
-	"IPV4LL",
-	"INFORM",
-	"STATIC",
-	"TIMEOUT",
-	"ROUTERADVERT",
-	NULL
-};
 
 int
 set_nonblock(int fd)
@@ -229,40 +216,31 @@ dhcpcd_get_value(const struct dhcpcd_config *c, const char *var)
 static const char *
 get_status(void)
 {
-	const char *nstatus, *reason;
+	const char *if_up;
 	const struct dhcpcd_config *c;
-	const char *const *r;
 
 	if (command_fd == -1 || listen_fd == -1)
 		return "down";
-	nstatus = NULL;
 	for (c = dhcpcd_configs; c; c = c->next) {
-		reason = dhcpcd_get_value(c, "reason=");
-		if (reason == NULL)
+		if_up = dhcpcd_get_value(c, "if_up=");
+		if (if_up == NULL)
 			continue;
-		for (r = up_reasons; *r; r++) {
-			if (strcmp(*r, reason) == 0) {
-				nstatus = "connected";
-				break;
-			}
-		}
-		if (nstatus && strcmp(nstatus, "connected") == 0)
-			break;
-		if (strcmp(reason, "CARRIER") == 0)
-			nstatus = "connecting";
+		if (strcmp(if_up, "true") == 0)
+			return "connected";
+		// FIXME!!!
+		//if (strcmp(reason, "CARRIER") == 0)
+		//	nstatus = "connecting";
 	}
-	if (nstatus == NULL)
-		nstatus = "disconnected";
-	return nstatus;
+	return "disconnected";
 }
 
 struct dhcpcd_config *
-dhcpcd_get_config(const char *iface)
+dhcpcd_get_config(const char *iface, const char *type)
 {
 	struct dhcpcd_config *c;
 
 	for (c = dhcpcd_configs; c; c = c->next)
-		if (strcmp(c->iface, iface) == 0)
+		if (strcmp(c->iface, iface) == 0 && strcmp(c->type, type) == 0)
 			return c;
 	return NULL;
 }
@@ -272,6 +250,8 @@ sort_configs(void)
 {
 	struct dhcpcd_config *c, *nc = NULL, *nl = NULL;
 	char *tmp, *p, *token;
+	static const char *types[] = { "ipv4", "ra", NULL };
+	int i;
 
 	if (order == NULL)
 		return;
@@ -279,36 +259,38 @@ sort_configs(void)
 	while ((token = strsep(&p, " "))) {
 		if (*token == '\0')
 			continue;
-		c = dhcpcd_get_config(token);
-		if (c == NULL)
-			continue;
-		if (c->next)
-			c->next->prev = c->prev;
-		if (c->prev)
-			c->prev->next = c->next;
-		else
-			dhcpcd_configs = c->next;
-		c->next = NULL;
-		c->prev = nl;
-		if (nl) {
-			nl->next = c;
-			nl = c;
-		} else
-			nc = nl = c;
+		for (i = 0; i < 2; i++) {
+			c = dhcpcd_get_config(token, types[i]);
+			if (c == NULL)
+				continue;
+			if (c->next)
+				c->next->prev = c->prev;
+			if (c->prev)
+				c->prev->next = c->next;
+			else
+				dhcpcd_configs = c->next;
+			c->next = NULL;
+			c->prev = nl;
+			if (nl) {
+				nl->next = c;
+				nl = c;
+			} else
+				nc = nl = c;
+		}
 	}
 	free(tmp);
 	dhcpcd_configs = nc;
 
 	printf ("new order: ");
 	for (c = dhcpcd_configs; c; c = c->next)
-		printf ("%s ", c->iface);
+		printf ("%s(%s) ", c->iface, c->type);
 	printf ("\n");
 }
 
 static struct dhcpcd_config *
 prepend_config(char *data, size_t len)
 {
-	const char *iface;
+	const char *iface, *reason, *type;
 	struct dhcpcd_config *c;
 
 	iface = _get_value(data, len, "interface=");
@@ -316,7 +298,16 @@ prepend_config(char *data, size_t len)
 		syslog(LOG_ERR, "dhcpcd: no interface in config");
 		return NULL;
 	}
-	c = dhcpcd_get_config(iface);
+	reason = _get_value(data, len, "reason=");
+	if (reason == NULL) {
+		syslog(LOG_ERR, "dhcpcd: no reason in config");
+		return NULL;
+	}
+	if (strcmp(reason, "ROUTERADVERT") == 0)
+		type = "ra";
+	else
+		type = "ipv4";
+	c = dhcpcd_get_config(iface, type);
 	if (c == NULL) {
 		c = malloc(sizeof(*c));
 		if (c == NULL) {
@@ -332,6 +323,7 @@ prepend_config(char *data, size_t len)
 		free(c->data);
 
 	c->iface = iface;
+	c->type = type;
 	c->data = data;
 	c->data_len = len;
 	return c;
