@@ -36,6 +36,8 @@
 #include "dhcpcd-dbus.h"
 #include "wpa.h"
 
+const char copyright[] = "Copyright (c) 2009-2012 Roy Marples";
+
 static void
 cleanup(void)
 {

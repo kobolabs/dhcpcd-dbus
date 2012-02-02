@@ -1,6 +1,6 @@
 /*
  * dhcpcd-dbus
- * Copyright 2008-2010 Roy Marples <roy@marples.name>
+ * Copyright 2008-2012 Roy Marples <roy@marples.name>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,7 +28,7 @@
 #define DEFS_H
 
 #define PACKAGE			"dhcpcd-dbus"
-#define VERSION			"0.5.2"
+#define VERSION			"0.6.0"
 
 #include "config.h"
 
