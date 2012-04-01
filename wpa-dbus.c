@@ -215,7 +215,6 @@ list_networks(DBusConnection *con, DBusMessage *msg)
 	DBusMessageIter args, array, item;
 	DBusError err;
 	char *s, buffer[2048], *t, *ssid, *bssid, *flags;
-	ssize_t bytes;
 	int id;
 
 	dbus_error_init(&err);
@@ -233,7 +232,7 @@ list_networks(DBusConnection *con, DBusMessage *msg)
 	    DBUS_TYPE_STRING_AS_STRING
 	    DBUS_STRUCT_END_CHAR_AS_STRING,
 	    &array);
-	bytes = wpa_cmd(s, "LIST_NETWORKS", buffer, sizeof(buffer));
+	wpa_cmd(s, "LIST_NETWORKS", buffer, sizeof(buffer));
 	s = strchr(buffer, '\n');
 	if (s != NULL) {
 		while ((t = strsep(&s, "\n")) != NULL) {
