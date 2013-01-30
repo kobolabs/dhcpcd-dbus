@@ -310,6 +310,11 @@ dhcpcd_dbus_signal_status(const char *status)
 	DBusMessageIter args;
 
 	syslog(LOG_INFO, "status changed to %s", status);
+	if (connection == NULL) {
+		syslog(LOG_WARNING,
+		    "no DBus connection to notify of status change");
+		return;
+	}
 	msg = dbus_message_new_signal(DHCPCD_PATH, DHCPCD_SERVICE,
 	    "StatusChanged");
 	if (msg == NULL) {
@@ -332,6 +337,12 @@ dhcpcd_dbus_configure(const struct dhcpcd_config *c)
 	DBusMessageIter args, dict;
 	const char *reason;
 	struct o_dbus type;
+
+	if (connection == NULL) {
+		syslog(LOG_WARNING,
+		    "no DBus connection for dhcpcd event");
+		return;
+	}
 
 	msg = dbus_message_new_signal(DHCPCD_PATH, DHCPCD_SERVICE, "Event");
 	if (msg == NULL) {
@@ -687,6 +698,7 @@ dhcpcd_setconfig(DBusConnection *con, DBusMessage *msg)
 static DBusHandlerResult
 msg_handler(DBusConnection *con, DBusMessage *msg, _unused void *data)
 {
+
 	if (dbus_message_is_method_call(msg,
 		DBUS_INTERFACE_INTROSPECTABLE, "Introspect"))
 		return introspect(con, msg);
@@ -743,7 +755,7 @@ dbus_event(int revents, void *watch)
 	if (flags != 0)
 		dbus_watch_handle((DBusWatch *)watch, flags);
 
-	if (connection != NULL) {
+	if (connection) {
 		dbus_connection_ref(connection);
 		while (dbus_connection_dispatch(connection) ==
 		    DBUS_DISPATCH_DATA_REMAINS)
@@ -789,24 +801,15 @@ dhcpcd_dbus_init(void)
 
 	dbus_error_init(&err);
 	connection = dbus_bus_get(DBUS_BUS_SYSTEM, &err);
-	if (connection == NULL) {
-		if (dbus_error_is_set(&err))
-			syslog(LOG_ERR, "%s", err.message);
-		else
-			syslog(LOG_ERR, "failed to get a dbus connection");
-		return -1;
-	}
-			
-	ret = dbus_bus_request_name(connection, DHCPCD_SERVICE,
-	    DBUS_NAME_FLAG_REPLACE_EXISTING, &err);
 	if (dbus_error_is_set(&err)) {
 		syslog(LOG_ERR, "%s", err.message);
 		return -1;
 	}
-	if (ret != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER) {
-		syslog(LOG_ERR, "dbus: not primary owner");
+	if (connection == NULL) {
+		syslog(LOG_ERR, "failed to get a dbus connection");
 		return -1;
 	}
+			
 	if (!dbus_connection_set_watch_functions(connection,
 		add_watch, remove_watch, NULL, NULL, NULL))
 	{
@@ -819,12 +822,29 @@ dhcpcd_dbus_init(void)
 		syslog(LOG_ERR, "dbus: failed to register object path");
 		return -1;
 	}
+
+	/* We need to request our name last */
+	ret = dbus_bus_request_name(connection, DHCPCD_SERVICE,
+	    DBUS_NAME_FLAG_REPLACE_EXISTING, &err);
+	if (dbus_error_is_set(&err)) {
+		syslog(LOG_ERR, "%s", err.message);
+		return -1;
+	}
+	if (ret != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER) {
+		syslog(LOG_ERR, "dbus: not primary owner");
+		return -1;
+	}
+
+	/* Process the queue as the watchers don't seem to pickup
+	 * the first call if we have just been activated */
+	dbus_event(0, NULL);
 	return 0;
 }
 
 void
 dhcpcd_dbus_close(void)
 {
+
 	if (connection) {
 		dbus_connection_unref(connection);
 		connection = NULL;

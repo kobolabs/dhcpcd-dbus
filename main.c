@@ -41,6 +41,7 @@ const char copyright[] = "Copyright (c) 2009-2012 Roy Marples";
 static void
 cleanup(void)
 {
+
 	dhcpcd_dbus_close();
 	wpa_close(NULL);
 #ifdef DEBUG_MEMORY
@@ -51,6 +52,7 @@ cleanup(void)
 static void
 handle_signal(int sig)
 {
+
 	if (sig) {
 		syslog(LOG_INFO, "Got signal %d, exiting", sig);
 		exit(EXIT_SUCCESS);
@@ -60,6 +62,7 @@ handle_signal(int sig)
 int
 main(void)
 {
+
 	openlog(PACKAGE, LOG_PERROR, LOG_DAEMON);
 	setlogmask(LOG_UPTO(LOG_INFO));
 	syslog(LOG_INFO, "starting " PACKAGE "-" VERSION);
@@ -74,6 +77,8 @@ main(void)
 	if (dhcpcd_dbus_init() == -1)
 		exit(EXIT_FAILURE);
 	dhcpcd_init(NULL);
+
+	syslog(LOG_INFO, "init completed, waiting for events");
 	start_eloop();
 	exit(EXIT_SUCCESS);
 }

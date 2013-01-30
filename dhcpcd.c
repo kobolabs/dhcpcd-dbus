@@ -421,6 +421,7 @@ free_configs(void)
 void
 free_option_value(struct option_value *o)
 {
+
 	free(o->option);
 	free(o->value);
 	free(o);
@@ -606,6 +607,7 @@ exit:
 struct option_value *
 dhcpcd_read_options(const char *block, const char *name)
 {
+
 	return _options(ACT_READ, block, name, NULL, NULL);
 }
 
