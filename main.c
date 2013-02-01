@@ -74,9 +74,9 @@ main(void)
 	/* Ignore pipes */
 	signal(SIGPIPE, SIG_IGN);
 
+	dhcpcd_init(NULL);
 	if (dhcpcd_dbus_init() == -1)
 		exit(EXIT_FAILURE);
-	dhcpcd_init(NULL);
 
 	syslog(LOG_INFO, "init completed, waiting for events");
 	start_eloop();
