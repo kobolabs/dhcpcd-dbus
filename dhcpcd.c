@@ -48,7 +48,7 @@ struct dhcpcd_config *dhcpcd_configs = NULL;
 
 static char *order;
 static char *cffile;
-int command_fd = -1;
+static int command_fd = -1;
 static int listen_fd = -1;
 
 int
