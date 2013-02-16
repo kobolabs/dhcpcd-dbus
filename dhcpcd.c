@@ -210,6 +210,7 @@ _get_value(const char *data, size_t len, const char *var)
 const char *
 dhcpcd_get_value(const struct dhcpcd_config *c, const char *var)
 {
+
 	return _get_value(c->data, c->data_len, var);
 }
 
@@ -337,10 +338,8 @@ read_config(int fd)
 	struct dhcpcd_config *c;
 
 	bytes = read(fd, sbuf, sizeof(sbuf));
-	if (bytes == 0 || bytes == -1) {
-		syslog(LOG_ERR, "lost connection to dhcpcd");
-		return NULL;
-	}
+	if (bytes == 0 || bytes == -1) 
+		goto lost;
 	memcpy(&len, sbuf, sizeof(len));
 	rbuf = malloc(len + 1);
 	if (rbuf == NULL) {
@@ -349,9 +348,8 @@ read_config(int fd)
 	}
 	bytes = read(fd, rbuf, len);
 	if (bytes == 0 || bytes == -1) {
-		syslog(LOG_ERR, "lost connection to dhcpcd");
 		free(rbuf);
-		return NULL;
+		goto lost;
 	}
 	if (bytes != len) {
 		free(rbuf);
@@ -365,6 +363,12 @@ read_config(int fd)
 		return NULL;
 	}
 	return c;
+
+lost:
+	syslog(LOG_ERR, "lost connection to dhcpcd");
+	dhcpcd_close();
+	add_timeout_sec(1, dhcpcd_init, NULL);
+	return NULL;
 }
 
 static void
@@ -687,13 +691,13 @@ dhcpcd_init(_unused void *data)
 	memcpy(&nifs, cmd, sizeof(ssize_t));
 	for (; nifs > 0; nifs--) {
 		c = read_config(command_fd);
+		if (c == NULL)
+			return;
 		ifo = dhcpcd_get_value(c, "interface_order=");
 		if (ifo != NULL) {
 			free(order);
 			order = strdup(ifo);
 		}
-		if (c == NULL)
-			return;
 		syslog(LOG_INFO, "retrieved interface %s (%s)",
 		    c->iface, dhcpcd_get_value(c, "reason="));
 	}
