@@ -172,6 +172,11 @@ wpa_dbus_signal_scan_results(const char *iface)
 	DBusMessageIter args;
 
 	syslog(LOG_INFO, "scan results on interface %s", iface);
+	if (connection == NULL) {
+		syslog(LOG_WARNING,
+		    "no DBus connection to notify of status change");
+		return;
+	}
 	msg = dbus_message_new_signal(DHCPCD_PATH, DHCPCD_SERVICE,
 	    "ScanResults");
 	if (msg == NULL) {
