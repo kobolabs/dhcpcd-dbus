@@ -128,7 +128,7 @@ echo "/* $OS */" >$CONFIG_H
 # Linux gets -lrt via
 case "$OS" in
 linux|kfreebsd)
-	echo "LDADD+=		-lrt" >>$CONFIG_MK
+	echo "LDADD+=		-lpthread -lrt" >>$CONFIG_MK
 	;;
 esac
 
@@ -228,8 +228,8 @@ if [ "$STRLCPY" = no ]; then
 fi
 
 # Get DBus CFLAGS
-DBUS_CFLAGS=$(pkg-config --cflags dbus-1) || exit 1
-DBUS_LIBS=$(pkg-config --libs dbus-1) || exit 1
+DBUS_CFLAGS="-I/chroot/include/dbus-1.0 -I/chroot/lib/dbus-1.0/include"
+DBUS_LIBS="-L/chroot/lib -ldbus-1"
 echo "DBus CFLAGS=$DBUS_CFLAGS"
 echo "DBus LIBS=$DBUS_LIBS"
 echo "CPPFLAGS+=	$DBUS_CFLAGS" >>config.mk
