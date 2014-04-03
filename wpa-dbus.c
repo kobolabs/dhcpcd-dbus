@@ -91,6 +91,9 @@ const char wpa_introspection_xml[] =
     "    <method name=\"Disconnect\">\n"
     "      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
     "    </method>\n"
+    "    <method name=\"Reconfigure\">\n"
+    "      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
+    "    </method>\n"
     "    <method name=\"Reassociate\">\n"
     "      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
     "    </method>\n"
@@ -399,6 +402,13 @@ save_config(DBusConnection *con, DBusMessage *msg)
 }
 
 static DBusHandlerResult
+reconfigure(DBusConnection *con, DBusMessage *msg)
+{
+	return _cmd(con, msg,
+	    "RECONFIGURE", "Failed to reconfigure");
+}
+
+static DBusHandlerResult
 reassociate(DBusConnection *con, DBusMessage *msg)
 {
 	return _cmd(con, msg,
@@ -505,6 +515,8 @@ wpa_dbus_handler(DBusConnection *con, DBusMessage *msg)
 		return save_config(con, msg);
 	if (dbus_message_is_method_call(msg, DHCPCD_SERVICE, "Disconnect"))
 		return disconnect(con, msg);
+	if (dbus_message_is_method_call(msg, DHCPCD_SERVICE, "Reconfigure"))
+		return reconfigure(con, msg);
 	if (dbus_message_is_method_call(msg, DHCPCD_SERVICE, "Reassociate"))
 		return reassociate(con, msg);
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
