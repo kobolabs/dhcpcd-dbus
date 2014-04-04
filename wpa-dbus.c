@@ -100,6 +100,9 @@ const char wpa_introspection_xml[] =
     "    <method name=\"WpsPbc\">\n"
     "      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
     "    </method>\n"
+    "    <method name=\"Terminate\">\n"
+    "      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
+    "    </method>\n"
     "    <signal name=\"ScanResults\">\n"
     "      <arg name=\"interface\" direction=\"out\" type=\"s\"/>\n"
     "    </signal>\n";
@@ -426,6 +429,13 @@ wps_pbc(DBusConnection *con, DBusMessage *msg)
 }
 
 static DBusHandlerResult
+terminate(DBusConnection *con, DBusMessage *msg)
+{
+	return _cmd(con, msg,
+	    "TERMINATE", "Failed to terminate");
+}
+
+static DBusHandlerResult
 disconnect(DBusConnection *con, DBusMessage *msg)
 {
 	return _cmd(con, msg,
@@ -531,5 +541,7 @@ wpa_dbus_handler(DBusConnection *con, DBusMessage *msg)
 		return reassociate(con, msg);
 	if (dbus_message_is_method_call(msg, DHCPCD_SERVICE, "WpsPbc"))
 		return wps_pbc(con, msg);
+	if (dbus_message_is_method_call(msg, DHCPCD_SERVICE, "Terminate"))
+		return terminate(con, msg);
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
