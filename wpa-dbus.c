@@ -97,6 +97,9 @@ const char wpa_introspection_xml[] =
     "    <method name=\"Reassociate\">\n"
     "      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
     "    </method>\n"
+    "    <method name=\"WpsPbc\">\n"
+    "      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
+    "    </method>\n"
     "    <signal name=\"ScanResults\">\n"
     "      <arg name=\"interface\" direction=\"out\" type=\"s\"/>\n"
     "    </signal>\n";
@@ -416,6 +419,13 @@ reassociate(DBusConnection *con, DBusMessage *msg)
 }
 
 static DBusHandlerResult
+wps_pbc(DBusConnection *con, DBusMessage *msg)
+{
+	return _cmd(con, msg,
+	    "WPS_PBC", "Failed to wps_pbc");
+}
+
+static DBusHandlerResult
 disconnect(DBusConnection *con, DBusMessage *msg)
 {
 	return _cmd(con, msg,
@@ -519,5 +529,7 @@ wpa_dbus_handler(DBusConnection *con, DBusMessage *msg)
 		return reconfigure(con, msg);
 	if (dbus_message_is_method_call(msg, DHCPCD_SERVICE, "Reassociate"))
 		return reassociate(con, msg);
+	if (dbus_message_is_method_call(msg, DHCPCD_SERVICE, "WpsPbc"))
+		return wps_pbc(con, msg);
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
