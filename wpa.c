@@ -314,9 +314,6 @@ wpa_configure(const struct dhcpcd_config *c)
 {
 	const char *p;
 
-	p = dhcpcd_get_value(c, "ifwireless=");
-	if (p == NULL || *p == '\0' || *p == '0')
-		return 0;
 	p = dhcpcd_get_value(c, "reason=");
 	if (p == NULL)
 		return 0;
