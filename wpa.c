@@ -274,6 +274,7 @@ ping(void *arg)
 	ifs = (struct if_sock *)arg;
 	if (_wpa_cmd(ifs->cmd_fd, "PING", buffer, sizeof(buffer)) > 0 &&
 	    strncmp(buffer, "PONG\n", 5) == 0) {
+		wpa_dbus_signal_status();
 		add_timeout_sec(1, ping, ifs);
 		return;
 	}
