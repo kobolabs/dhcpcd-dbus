@@ -320,13 +320,16 @@ prepend_config(char *data, size_t len)
 		c->next = dhcpcd_configs;
 		c->prev = NULL;
 		dhcpcd_configs = c;
-	} else
+	} else {
 		free(c->data);
+		free(c->wpa_state);
+	}
 
 	c->iface = iface;
 	c->type = type;
 	c->data = data;
 	c->data_len = len;
+	c->wpa_state = NULL;
 	return c;
 }
 
@@ -417,6 +420,7 @@ free_configs(void)
 	while (dhcpcd_configs != NULL) {
 		c = dhcpcd_configs->next;
 		free(dhcpcd_configs->data);
+		free(dhcpcd_configs->wpa_state);
 		free(dhcpcd_configs);
 		dhcpcd_configs = c;
 	}
