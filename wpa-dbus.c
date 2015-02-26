@@ -225,13 +225,28 @@ scan_results(DBusConnection *con, DBusMessage *msg)
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
+int
+update_dhcpcd_config_wpa_state(struct dhcpcd_config *c, const char *wpa_state)
+{
+	if (c->wpa_state == NULL || strcmp(c->wpa_state, wpa_state) != 0) {
+		size_t status_len;
+		status_len = strlen(wpa_state) + 1;
+		free(c->wpa_state);
+		c->wpa_state = malloc(status_len);
+		memcpy(c->wpa_state, wpa_state, status_len);
+		return 1;
+	}
+	return 0;
+}
+
 void
 wpa_dbus_signal_status()
 {
 	DBusMessage *reply;
 	char *s, buffer[2048];
 	DBusMessageIter args, dict, ifaces, iface;
-	const struct dhcpcd_config *c;
+	struct dhcpcd_config *c;
+	int updates;
 
 	if (connection == NULL) {
 		syslog(LOG_WARNING,
@@ -253,6 +268,7 @@ wpa_dbus_signal_status()
 		DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
 	    &ifaces);
 
+	updates = 0;
 	for (c = dhcpcd_configs; c; c = c->next) {
 		if (wpa_cmd(c->iface, "STATUS", buffer, sizeof(buffer)) == -1) {
 			syslog(LOG_WARNING, "wpa status failed for interface %s", c->iface);
@@ -286,6 +302,10 @@ wpa_dbus_signal_status()
 			dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &value);
 			dbus_message_iter_close_container(&dict, &entry);
 
+			if (strcmp(key, "wpa_state") == 0) {
+				updates += update_dhcpcd_config_wpa_state(c, value);
+			}
+
 			s = strtok(NULL, "\n");
 		}
 
@@ -293,7 +313,10 @@ wpa_dbus_signal_status()
 		dbus_message_iter_close_container(&ifaces, &iface);
 	}
 	dbus_message_iter_close_container(&args, &ifaces);
-	dbus_connection_send(connection, reply, NULL);
+
+	if (updates) {
+		dbus_connection_send(connection, reply, NULL);
+	}
 	dbus_message_unref(reply);
 }
 

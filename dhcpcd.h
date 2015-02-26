@@ -42,6 +42,7 @@ struct dhcpcd_config {
 	const char *type;
 	char *data;
 	size_t data_len;
+	char* wpa_state;
 	struct dhcpcd_config *prev;
 	struct dhcpcd_config *next;
 };
