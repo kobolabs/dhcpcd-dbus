@@ -106,6 +106,9 @@ const char wpa_introspection_xml[] =
     "    <method name=\"Terminate\">\n"
     "      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
     "    </method>\n"
+    "    <signal name=\"WpaFailureEvent\">\n"
+    "      <arg name=\"event\" direction=\"out\"type=\"s\"/>\n"
+    "    </signal>\n"
     "    <signal name=\"ScanResults\">\n"
     "      <arg name=\"interface\" direction=\"out\" type=\"s\"/>\n"
     "    </signal>\n";
@@ -200,6 +203,30 @@ wpa_dbus_signal_scan_results(const char *iface)
 	    DBUS_TYPE_STRING, &iface);
 	if (!dbus_connection_send(connection, msg, NULL))
 		syslog(LOG_ERR, "failed to send status to dbus");
+	dbus_message_unref(msg);
+}
+
+void
+wpa_dbus_signal_wpa_fail_event(const char *event)
+{
+	DBusMessage *msg;
+	DBusMessageIter args;
+
+	if (connection == NULL) {
+		syslog(LOG_WARNING, "no DBus connection to notify of event");
+		return;
+	}
+	msg = dbus_message_new_signal(DHCPCD_PATH, DHCPCD_SERVICE,
+				"WpaFailureEvent");
+	if (msg == NULL) {
+		syslog(LOG_ERR, "failed to make a message for event");
+		return;
+	}
+	dbus_message_iter_init_append(msg, &args);
+	dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &event);
+
+	if (!dbus_connection_send(connection, msg, NULL))
+		syslog(LOG_ERR, "failed to send event to dbus");
 	dbus_message_unref(msg);
 }
 
