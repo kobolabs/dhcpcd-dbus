@@ -255,6 +255,11 @@ read_event(const struct if_sock *ifs)
 		}
 	if (strcmp(p, "CTRL-EVENT-SCAN-RESULTS") == 0)
 		wpa_dbus_signal_scan_results(ifs->iface);
+	else if ((strncmp(p, "CTRL-EVENT-DISCONNECTED", 23) == 0) ||
+		(strncmp(p, "CTRL-EVENT-ASSOC-REJECT", 23) == 0) ||
+		(strncmp(p, "CTRL-EVENT-AUTH-REJECT", 22) == 0) ||
+		(strncmp(p, "CTRL-EVENT-SCAN-FAILED", 22) == 0))
+		wpa_dbus_signal_wpa_fail_event(p);
 	return bytes;
 }
 
