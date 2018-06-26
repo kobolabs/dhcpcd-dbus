@@ -297,6 +297,7 @@ wpa_dbus_signal_status()
 
 	updates = 0;
 	for (c = dhcpcd_configs; c; c = c->next) {
+		char* saveptr;
 		if (wpa_cmd(c->iface, "STATUS", buffer, sizeof(buffer)) == -1) {
 			syslog(LOG_WARNING, "wpa status failed for interface %s", c->iface);
 			continue;
@@ -312,7 +313,7 @@ wpa_dbus_signal_status()
 		    DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
 		    &dict);
 
-		s = strtok(buffer, "\n");
+		s = strtok_r(buffer, "\n", &saveptr);
 		while (s != NULL) {
 			DBusMessageIter entry;
 			char *key, *value;
@@ -333,7 +334,7 @@ wpa_dbus_signal_status()
 				updates += update_dhcpcd_config_wpa_state(c, value);
 			}
 
-			s = strtok(NULL, "\n");
+			s = strtok_r(NULL, "\n", &saveptr);
 		}
 
 		dbus_message_iter_close_container(&iface, &dict);
