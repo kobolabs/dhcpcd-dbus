@@ -68,6 +68,9 @@ const char wpa_introspection_xml[] =
     "      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
     "      <arg name=\"id\" direction=\"in\" type=\"i\"/>\n"
     "    </method>\n"
+    "    <method name=\"EnableAllNetworks\">\n"
+    "      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
+    "    </method>\n"
     "    <method name=\"DisableNetwork\">\n"
     "      <arg name=\"interface\" direction=\"in\" type=\"s\"/>\n"
     "      <arg name=\"id\" direction=\"in\" type=\"i\"/>\n"
@@ -513,6 +516,13 @@ enable_network(DBusConnection *con, DBusMessage *msg)
 }
 
 static DBusHandlerResult
+enable_all_networks(DBusConnection *con, DBusMessage *msg)
+{
+	return _cmd(con, msg,
+	    "ENABLE_NETWORK ALL", "Failed to enable all networks");
+}
+
+static DBusHandlerResult
 disable_network(DBusConnection *con, DBusMessage *msg)
 {
 	return _network(con, msg,
@@ -649,6 +659,8 @@ wpa_dbus_handler(DBusConnection *con, DBusMessage *msg)
 		return remove_network(con, msg);
 	if (dbus_message_is_method_call(msg, DHCPCD_SERVICE, "EnableNetwork"))
 		return enable_network(con, msg);
+	if (dbus_message_is_method_call(msg, DHCPCD_SERVICE, "EnableAllNetworks"))
+		return enable_all_networks(con, msg);
 	if (dbus_message_is_method_call(msg, DHCPCD_SERVICE, "DisableNetwork"))
 		return disable_network(con, msg);
 	if (dbus_message_is_method_call(msg, DHCPCD_SERVICE, "SelectNetwork"))
