@@ -333,6 +333,7 @@ void
 dhcpcd_dbus_configure(const struct dhcpcd_config *c)
 {
 	int retval;
+	int update_status;
 	DBusMessage* msg = NULL;
 	DBusMessageIter args, dict;
 	const char *reason;
@@ -350,6 +351,7 @@ dhcpcd_dbus_configure(const struct dhcpcd_config *c)
 		return;
 	}
 
+	update_status = 0;
 	reason = dhcpcd_get_value(c, "reason=");
 	syslog(LOG_INFO, "event on interface %s (%s)", c->iface, reason);
 	dbus_message_iter_init_append(msg, &args);
@@ -362,9 +364,10 @@ dhcpcd_dbus_configure(const struct dhcpcd_config *c)
 	if (strcmp(c->type, "ra") == 0) {
 		retval = append_config(&dict, NULL, c);
 	} else if (dhcpcd_get_value(c, "new_ip_address") ||
-	    strcmp(reason, "CARRIER") == 0)
+	    strcmp(reason, "CARRIER") == 0) {
 		retval = append_config(&dict, "new_", c);
-	else
+		update_status = 1;
+	} else
 		retval = append_config(&dict, "old_", c);
 	if (retval == 0) {
 		type.name = "Type";
@@ -378,6 +381,10 @@ dhcpcd_dbus_configure(const struct dhcpcd_config *c)
 	} else
 		syslog(LOG_ERR, "failed to construct dbus message");
 	dbus_message_unref(msg);
+
+	if (update_status != 0) {
+		wpa_dbus_signal_status();
+	}
 }
 
 static const char introspection_header_xml[] =
