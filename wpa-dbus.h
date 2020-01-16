@@ -37,5 +37,6 @@ void wpa_dbus_signal_scan_results(const char *iface);
 void wpa_dbus_signal_wpa_fail_event(const char *event);
 int update_dhcpcd_config_wpa_state(struct dhcpcd_config *c, const char *wpa_state);
 void wpa_dbus_signal_status(void);
+void wpa_dbus_signal_signal_strength(void);
 
 #endif

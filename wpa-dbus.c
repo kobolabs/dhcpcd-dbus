@@ -112,6 +112,9 @@ const char wpa_introspection_xml[] =
     "    <signal name=\"WpaFailureEvent\">\n"
     "      <arg name=\"event\" direction=\"out\"type=\"s\"/>\n"
     "    </signal>\n"
+    "    <signal name=\"SignalStrength\">\n"
+    "      <arg name=\"results\" direction=\"out\" type=\"a{sa{ss}}\"/>\n"
+    "    </signal>\n"
     "    <signal name=\"ScanResults\">\n"
     "      <arg name=\"interface\" direction=\"out\" type=\"s\"/>\n"
     "    </signal>\n";
@@ -348,6 +351,79 @@ wpa_dbus_signal_status()
 	if (updates) {
 		dbus_connection_send(connection, reply, NULL);
 	}
+	dbus_message_unref(reply);
+}
+
+void
+wpa_dbus_signal_signal_strength()
+{
+	DBusMessage *reply;
+	char *s, buffer[2048];
+	DBusMessageIter args, dict, ifaces, iface;
+	struct dhcpcd_config *c;
+
+	if (connection == NULL) {
+		syslog(LOG_WARNING,
+		    "no DBus connection to notify of wpa signal strength");
+		return;
+	}
+
+	reply = dbus_message_new_signal(DHCPCD_PATH, DHCPCD_SERVICE, "SignalStrength");
+	dbus_message_iter_init_append(reply, &args);
+
+	dbus_message_iter_open_container(&args, DBUS_TYPE_ARRAY,
+		DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+		DBUS_TYPE_STRING_AS_STRING
+		DBUS_TYPE_ARRAY_AS_STRING
+		DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+		DBUS_TYPE_STRING_AS_STRING
+		DBUS_TYPE_STRING_AS_STRING
+		DBUS_DICT_ENTRY_END_CHAR_AS_STRING
+		DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
+	    &ifaces);
+
+	for (c = dhcpcd_configs; c; c = c->next) {
+		char* saveptr;
+		if (wpa_cmd(c->iface, "BSS CURRENT", buffer, sizeof(buffer)) == -1) {
+			syslog(LOG_WARNING, "wpa status failed for interface %s", c->iface);
+			continue;
+		}
+
+		dbus_message_iter_open_container(&ifaces, DBUS_TYPE_DICT_ENTRY, NULL, &iface);
+		dbus_message_iter_append_basic(&iface, DBUS_TYPE_STRING, &c->iface);
+
+		dbus_message_iter_open_container(&iface, DBUS_TYPE_ARRAY,
+		    DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+		    DBUS_TYPE_STRING_AS_STRING
+		    DBUS_TYPE_STRING_AS_STRING
+		    DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
+		    &dict);
+
+		s = strtok_r(buffer, "\n", &saveptr);
+		while (s != NULL) {
+			DBusMessageIter entry;
+			char *key, *value;
+			key = s;
+			value = strchr(key, '=');
+			if (value == NULL) {
+				continue;
+			}
+			*value = '\0';
+			value++;
+
+			dbus_message_iter_open_container(&dict, DBUS_TYPE_DICT_ENTRY, NULL, &entry);
+			dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+			dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &value);
+			dbus_message_iter_close_container(&dict, &entry);
+
+			s = strtok_r(NULL, "\n", &saveptr);
+		}
+
+		dbus_message_iter_close_container(&iface, &dict);
+		dbus_message_iter_close_container(&ifaces, &iface);
+	}
+	dbus_message_iter_close_container(&args, &ifaces);
+	dbus_connection_send(connection, reply, NULL);
 	dbus_message_unref(reply);
 }
 

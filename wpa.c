@@ -292,6 +292,13 @@ ping(void *arg)
 }
 
 static void
+bss_current()
+{
+	wpa_dbus_signal_signal_strength();
+	add_timeout_sec(30, bss_current, NULL);
+}
+
+static void
 wpa_init(void *arg)
 {
 	const char *iface;
@@ -311,6 +318,7 @@ wpa_init(void *arg)
 
 	add_event(ifs->ctrl_fd, handle_wpa, ifs);
 	add_timeout_sec(1, ping, ifs);
+	add_timeout_sec(2, bss_current, NULL);
 	syslog(LOG_INFO, "connected to wpa_supplicant on interface %s", iface);
 	wpa_dbus_signal_scan_results(iface);
 }
