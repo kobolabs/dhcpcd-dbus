@@ -305,7 +305,6 @@ wpa_dbus_signal_status()
 	for (c = dhcpcd_configs; c; c = c->next) {
 		char* saveptr;
 		if (wpa_cmd(c->iface, "STATUS", buffer, sizeof(buffer)) == -1) {
-			syslog(LOG_WARNING, "wpa status failed for interface %s", c->iface);
 			continue;
 		}
 
@@ -385,7 +384,6 @@ wpa_dbus_signal_signal_strength()
 	for (c = dhcpcd_configs; c; c = c->next) {
 		char* saveptr;
 		if (wpa_cmd(c->iface, "BSS CURRENT", buffer, sizeof(buffer)) == -1) {
-			syslog(LOG_WARNING, "wpa status failed for interface %s", c->iface);
 			continue;
 		}
 
